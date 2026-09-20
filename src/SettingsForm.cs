@@ -94,7 +94,7 @@ namespace MpcMovieDisplay {
             gPre.Controls.Add(cardDesktop);
             cardMovie = new PresetCardButton();
             cardMovie.Letter = "M"; cardMovie.TitleText = "Movie"; cardMovie.BadgeColor = Theme.Green;
-            cardMovie.SpecText = "3840\u00D72160 \u00B7 30 Hz \u00B7 RGB Full \u00B7 10-bit";
+            cardMovie.SpecText = "3840\u00D72160 \u00B7 24 Hz \u00B7 RGB Full \u00B7 10-bit";
             cardMovie.SubText = "Auto-set while MPC is open";
             cardMovie.Location = new Point(gx + cardW + Theme.Sc(12), gy); cardMovie.Size = new Size(cardW, cardH);
             cardMovie.Click += delegate { if(cb.Movie != null) cb.Movie(); };
@@ -210,7 +210,7 @@ namespace MpcMovieDisplay {
                 Lab(p, names[i], Theme.Font(12, false), Theme.TextSecondary, x + Theme.Sc(12), yy, half - Theme.Sc(16), Theme.Sc(16));
             }
             int cy = gy + Theme.Sc(52);
-            Lab(p, "Movie 4K30 RGB Full 10-bit \u2713", Theme.Mono(11, false), Theme.Green, gx, cy, half - Theme.Sc(8), Theme.Sc(16));
+            Lab(p, "Movie 4K RGB Full 10-bit \u2713", Theme.Mono(11, false), Theme.Green, gx, cy, half - Theme.Sc(8), Theme.Sc(16));
             Lab(p, "Desktop 4K60 RGB Full 8-bit \u2713", Theme.Mono(11, false), Theme.Blue, gx + half, cy, half - Theme.Sc(8), Theme.Sc(16));
 
             Panel log = new Panel();
@@ -218,7 +218,7 @@ namespace MpcMovieDisplay {
             log.Location = new Point(gx, cy + Theme.Sc(24));
             log.Size = new Size(innerW, Theme.Sc(66));
             p.Controls.Add(log);
-            Lab(log, "21:14:02  Applying movie preset.\r\n21:14:05  Movie mode verified \u2014 3840\u00D72160, 30 Hz, RGB Full, 10-bit.\r\n21:14:05  Windows HDR could not be confirmed: Off.",
+            Lab(log, "21:14:02  Applying movie preset.\r\n21:14:05  Movie mode verified \u2014 3840\u00D72160, RGB Full, 10-bit.\r\n21:14:05  Windows HDR could not be confirmed: Off.",
                 Theme.Mono(11, false), Theme.TextSecondary, Theme.Sc(10), Theme.Sc(8), innerW - Theme.Sc(20), Theme.Sc(52));
 
             int by = cy + Theme.Sc(24) + Theme.Sc(66) + Theme.Sc(12);
@@ -279,6 +279,11 @@ namespace MpcMovieDisplay {
         }
         public void SetAutomatic(bool on) { if(tglAuto != null) { tglAuto.Checked = on; tglAuto.Invalidate(); } }
         public void SetFallback(bool on) { if(tglFallback != null) { tglFallback.Checked = on; tglFallback.Invalidate(); } }
+        public void SetMovieHz(uint hz) {
+            if(cardMovie == null) return;
+            cardMovie.SpecText = "3840\u00D72160 \u00B7 " + hz + " Hz \u00B7 RGB Full \u00B7 10-bit";
+            cardMovie.Invalidate();
+        }
         public void SetStartup(bool on) { if(tglStartup != null) { tglStartup.Checked = on; tglStartup.Invalidate(); } }
     }
 }

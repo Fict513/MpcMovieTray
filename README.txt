@@ -17,7 +17,7 @@ The build is unsigned, so Windows may show an unknown-publisher warning.
 Source code and a local Build.cmd are included for inspection/rebuilding.
 
 THE TWO PRESETS
-Movie:    3840 x 2160, 30 Hz, RGB Full, 10 bits per colour channel.
+Movie:    3840 x 2160, 24 Hz, RGB Full, 10 bits per colour channel.
 Desktop:  3840 x 2160, 60 Hz, RGB Full, 8 bits per colour channel.
 
 Every application checks resolution, refresh rate, colour format, output range
@@ -102,10 +102,27 @@ HDR conversion and is not required to watch native HDR. 10-bit output alone does
 not enable HDR. Configure Windows and the video renderer for your desired HDR
 behaviour, and enable HDMI HDR for the TV input.
 
-30 Hz is the requested fixed movie target. Matching 23.976/24 fps films to their
-frame rate can improve cadence, but this app does NOT yet implement frame-rate
-matching, fractional refresh rates, 1440p or 12-bit presets. It does not claim
-those are confirmed capabilities of your TV.
+MOVIE REFRESH RATE
+The movie preset targets 24 Hz so that 24 fps films play one frame per refresh,
+instead of being spread over 30 Hz by 3:2 pulldown. That pulldown is the usual
+cause of judder in 24p material. The rate is stored as MovieHz in settings.json
+and can be changed without rebuilding.
+
+Windows reports refresh rates as whole numbers: Settings > System > Display >
+Advanced display shows 24 for 24.000 Hz and 23 for 23.976 Hz. Most films are
+23.976, not 24.000. On a 24.000 Hz output, 23.976 fps content repeats a frame
+roughly every 42 seconds. Setting MovieHz to 23 removes that, if the TV
+advertises a 23 Hz mode. Check that dropdown on the TV and use whichever rate it
+actually offers; both are a large improvement on 30 Hz.
+
+If the requested rate is not advertised, the switch fails cleanly with "No
+supported progressive 24 Hz mode at the requested resolution" and nothing is
+changed. Changing MovieHz also changes the preset's confirmation key, so the
+next switch to it is tested again with the 15-second rollback.
+
+This app still does not implement automatic per-file frame-rate matching, 1440p
+or 12-bit presets, and does not claim those are confirmed capabilities of your
+TV.
 
 EXIT, CRASHES AND RECOVERY
 Normal Exit deliberately returns to the selected Desktop preset even if MPC is

@@ -130,7 +130,7 @@ namespace MpcMovieDisplay {
 
                 Label note = new Label();
                 note.AutoSize = false;
-                note.Text = "Presets: 4K60 RGB Full 8-bit desktop / 4K30 RGB Full 10-bit movie.\r\nEach new preset is tested before automatic use.";
+                note.Text = "Presets: 4K60 RGB Full 8-bit desktop / 4K RGB Full 10-bit movie.\r\nEach new preset is tested before automatic use.";
                 note.Font = Theme.Font(11, false); note.ForeColor = Theme.TextSecondary;
                 note.BackColor = f.Body.BackColor;
                 note.Location = new Point(gx, Theme.Sc(84)); note.Size = new Size(W, Theme.Sc(40));

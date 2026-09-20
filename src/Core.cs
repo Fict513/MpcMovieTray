@@ -13,6 +13,9 @@ namespace MpcMovieDisplay {
         [DataMember] public string Identity="";
         [DataMember] public bool Automatic=true;
         [DataMember] public bool Desktop420=false;
+        // Movie-preset refresh rate. 24 = 24.000 Hz; 23 = 23.976 Hz as Windows
+        // reports it. Editable in settings.json without rebuilding.
+        [DataMember] public uint MovieHz=24;
         [DataMember] public List<string> Confirmed=new List<string>();
     }
     [DataContract] public class Snapshot {
@@ -69,10 +72,10 @@ namespace MpcMovieDisplay {
             if(players==0 && movieOwned && emptySamples>=2) return "Desktop";
             return "Hold";
         }
-        public static bool Matches(Mode m,NvidiaColor c,bool movie,bool desktop420) {
-            return m.Width==3840 && m.Height==2160 && m.Frequency==(movie?30u:60u) &&
-                c.Bpc==(movie?3u:2u) && c.Format==(!movie && desktop420?3:0) &&
-                c.DynamicRange==(!movie && desktop420?1:0);
+        public static bool Matches(Mode m,NvidiaColor c,bool movie,Settings s) {
+            return m.Width==3840 && m.Height==2160 && m.Frequency==(movie?s.MovieHz:60u) &&
+                c.Bpc==(movie?3u:2u) && c.Format==(!movie && s.Desktop420?3:0) &&
+                c.DynamicRange==(!movie && s.Desktop420?1:0);
         }
     }
     public static class Profiles {
@@ -86,7 +89,7 @@ namespace MpcMovieDisplay {
         }
         public static void Apply(Settings s,bool movie) {
             Native.RequireIdentity(s.DisplayName,s.Identity);
-            Mode target=Native.FindResolution(s.DisplayName,movie?30u:60u,3840,2160);
+            Mode target=Native.FindResolution(s.DisplayName,movie?s.MovieHz:60u,3840,2160);
             NvidiaColor c=Native.GetColor(s.DisplayName);
             c.Format=(byte)(!movie && s.Desktop420?3:0);
             c.Colorimetry=255; // Driver decides signal colourimetry; do not force SDR primaries.
@@ -99,14 +102,14 @@ namespace MpcMovieDisplay {
             Verify(s,movie);
         }
         public static void Verify(Settings s,bool movie) {
-            if(!Policy.Matches(Native.Current(s.DisplayName),Native.GetColor(s.DisplayName),movie,s.Desktop420))
+            if(!Policy.Matches(Native.Current(s.DisplayName),Native.GetColor(s.DisplayName),movie,s))
                 throw new InvalidOperationException("The driver did not keep the requested resolution, refresh rate, colour format, range and bit depth.");
         }
         public static void Restore(Snapshot snap) {
             Native.Restore(snap.Name,snap.Identity,snap.Mode,snap.Color);
         }
         public static string Key(Settings s,bool movie) {
-            return s.Identity+"|4K|"+(movie?"30-RGB-Full-10":s.Desktop420?"60-YUV420-Limited-8":"60-RGB-Full-8");
+            return s.Identity+"|4K|"+(movie?s.MovieHz+"-RGB-Full-10":s.Desktop420?"60-YUV420-Limited-8":"60-RGB-Full-8");
         }
     }
 }

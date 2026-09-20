@@ -55,7 +55,7 @@ namespace MpcMovieDisplay {
             bool movieActive=false, automatic=true, fallback=false, startup=false;
             int hdrState=1; // 0 = On, 1 = Off, 2 = Unknown
             SettingsCallbacks cb=new SettingsCallbacks();
-            cb.Movie=delegate { if(Dialogs.Confirm("4K30 - RGB Full - 10-bit")) movieActive=true; };
+            cb.Movie=delegate { if(Dialogs.Confirm("4K24 - RGB Full - 10-bit")) movieActive=true; };
             cb.Desktop=delegate { if(Dialogs.Confirm(fallback?"4K60 - YCbCr 4:2:0 - 8-bit":"4K60 - RGB Full - 8-bit")) movieActive=false; };
             cb.RestoreDesktop=cb.Desktop;
             cb.ToggleAutomatic=delegate { automatic=!automatic; };
@@ -68,6 +68,7 @@ namespace MpcMovieDisplay {
             cb.TestAgain=delegate { MessageBox.Show("UI test mode: nothing is stored.","MPC Movie Tray"); };
             ui=new SettingsForm(cb);
             ui.SetStartup(startup);
+            ui.SetMovieHz(24);
             System.Windows.Forms.Timer feed=new System.Windows.Forms.Timer();
             feed.Interval=500;
             feed.Tick+=delegate {
@@ -75,7 +76,7 @@ namespace MpcMovieDisplay {
                 StatusView v=new StatusView();
                 v.DisplayName="\\\\.\\DISPLAY2   (UI TEST - no hardware)";
                 v.Width=3840; v.Height=2160;
-                v.Freq=movieActive?30:60;
+                v.Freq=movieActive?24:60;
                 v.Format=(!movieActive && fallback)?"YCbCr 4:2:0":"RGB";
                 v.Range=(!movieActive && fallback)?"Limited":"Full";
                 v.Bits=movieActive?"10":"8";

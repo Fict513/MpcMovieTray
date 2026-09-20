@@ -37,7 +37,7 @@ namespace MpcMovieDisplay {
             statusLine=Add("Reading display...",null); statusLine.Enabled=false;
             hdrLine=Add("Windows HDR: checking...",null); hdrLine.Enabled=false;
             menu.Items.Add(new ToolStripSeparator());
-            Add("Movie: 4K30 / RGB Full / 10-bit",(s,e)=>Manual(true));
+            Add("Movie: 4K"+settings.MovieHz+" / RGB Full / 10-bit",(s,e)=>Manual(true));
             Add("Desktop: 4K60 / 8-bit",(s,e)=>Manual(false));
             automatic=Add("Automatic while MPC is open",(s,e)=>SetAutomatic(!settings.Automatic));
             automatic.Checked=settings.Automatic;
@@ -157,7 +157,7 @@ namespace MpcMovieDisplay {
             }
         }
         bool IsMovie() {
-            try {return Policy.Matches(Native.Current(settings.DisplayName),Native.GetColor(settings.DisplayName),true,settings.Desktop420);}catch{return false;}
+            try {return Policy.Matches(Native.Current(settings.DisplayName),Native.GetColor(settings.DisplayName),true,settings);}catch{return false;}
         }
         void UpdateStatus() {
             Native.RequireIdentity(settings.DisplayName,settings.Identity);
@@ -166,7 +166,7 @@ namespace MpcMovieDisplay {
             string format=c.Format==0?"RGB":c.Format==1?"YCbCr 4:2:2":c.Format==2?"YCbCr 4:4:4":c.Format==3?"YCbCr 4:2:0":"Auto";
             string range=c.DynamicRange==0?"Full":c.DynamicRange==1?"Limited":"Auto";
             string hdr=HdrStatus.Read(settings.DisplayName);
-            bool movie=Policy.Matches(m,c,true,settings.Desktop420),desktop=Policy.Matches(m,c,false,settings.Desktop420);
+            bool movie=Policy.Matches(m,c,true,settings),desktop=Policy.Matches(m,c,false,settings);
             statusLine.Text=string.Format("{0} x {1} / {2} Hz / {3} / {4}-bit",m.Width,m.Height,m.Frequency,format,bits);
             hdrLine.Text="Windows HDR: "+hdr;
             string tip=string.Format("{0}Hz {1} {2}bit | HDR {3} | {4}",m.Frequency,format,bits,hdr,settings.Automatic?"Auto":"Manual");
@@ -207,7 +207,7 @@ namespace MpcMovieDisplay {
                 Native.RequireIdentity(settings.DisplayName,settings.Identity);
                 string key=Profiles.Key(settings,movie);
                 bool test=!settings.Confirmed.Contains(key);
-                if(Policy.Matches(Native.Current(settings.DisplayName),Native.GetColor(settings.DisplayName),movie,settings.Desktop420) && !test) {
+                if(Policy.Matches(Native.Current(settings.DisplayName),Native.GetColor(settings.DisplayName),movie,settings) && !test) {
                     movieOwned=movie;if(!movie)Store.Delete("session.json");return true;
                 }
                 Snapshot before=Profiles.Capture(settings,settings.Automatic);
@@ -221,7 +221,7 @@ namespace MpcMovieDisplay {
                 if(test) {
                     before.DeadlineUtcTicks=DateTime.UtcNow.AddSeconds(35).Ticks;
                     Store.Save("transition.json",before);
-                    keep=Dialogs.Confirm(movie?"4K30 - RGB Full - 10-bit":settings.Desktop420?"4K60 - YCbCr 4:2:0 - 8-bit":"4K60 - RGB Full - 8-bit");
+                    keep=Dialogs.Confirm(movie?"4K"+settings.MovieHz+" - RGB Full - 10-bit":settings.Desktop420?"4K60 - YCbCr 4:2:0 - 8-bit":"4K60 - RGB Full - 8-bit");
                 }
                 if(!keep) {
                     before.DeadlineUtcTicks=DateTime.UtcNow.AddSeconds(45).Ticks;Store.Save("transition.json",before);
@@ -236,7 +236,7 @@ namespace MpcMovieDisplay {
                 Store.Delete("transition.json");
                 if(!movie)Store.Delete("session.json");
                 movieOwned=movie;
-                Toast(movie?"Movie mode verified":"Desktop mode verified",movie?"3840 x 2160, 30 Hz, RGB Full, 10-bit.":"3840 x 2160, 60 Hz, "+(settings.Desktop420?"YCbCr 4:2:0 Limited":"RGB Full")+", 8-bit.");
+                Toast(movie?"Movie mode verified":"Desktop mode verified",movie?"3840 x 2160, "+settings.MovieHz+" Hz, RGB Full, 10-bit.":"3840 x 2160, 60 Hz, "+(settings.Desktop420?"YCbCr 4:2:0 Limited":"RGB Full")+", 8-bit.");
                 if(movie)lastHdr="";
                 UpdateStatus();return true;
             } catch(Exception e) {
@@ -295,6 +295,7 @@ namespace MpcMovieDisplay {
             ui=new SettingsForm(cb);
             ui.FormClosed+=delegate{ui=null;};
             ui.SetStartup(StartupEnabled());
+            ui.SetMovieHz(settings.MovieHz);
             try{UpdateStatus();}catch{}
             ui.Show();ui.Activate();
         }
