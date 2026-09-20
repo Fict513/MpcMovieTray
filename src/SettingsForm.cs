@@ -30,8 +30,7 @@ namespace MpcMovieDisplay {
         Label lblOut1, lblOut2, lblMeta, lblMatches;
         RoundDot dotMatches;
         StatusPill hdrPill;
-        ToggleSwitch tglAuto, tglStartup;
-        ThemeCheckBox chkFallback;
+        ToggleSwitch tglAuto, tglStartup, tglFallback;
         GroupPanel diagPanel;
         bool diagOpen;
         int titleH = Theme.Sc(36);
@@ -73,11 +72,10 @@ namespace MpcMovieDisplay {
             GroupPanel gDisp = Group("Display", LM, y, W, Theme.Sc(64));
             btnDisplay = new ThemeButton();
             btnDisplay.Kind = 2;
-            btnDisplay.Glyph = Theme.GlyphMonitor;
             btnDisplay.Font = Theme.Font(13, false);
             btnDisplay.Location = new Point(gx, gy);
             btnDisplay.Size = new Size(innerW, Theme.Sc(34));
-            btnDisplay.Text = "Reading display…";
+            btnDisplay.Text = "Reading display\u2026";
             btnDisplay.Click += delegate { if(cb.ChooseDisplay != null) cb.ChooseDisplay(); };
             gDisp.Controls.Add(btnDisplay);
             y += Theme.Sc(64) + Theme.Sc(11);
@@ -89,14 +87,14 @@ namespace MpcMovieDisplay {
             int cardH = Theme.Sc(72);
             cardDesktop = new PresetCardButton();
             cardDesktop.Letter = "D"; cardDesktop.TitleText = "Desktop"; cardDesktop.BadgeColor = Theme.Blue;
-            cardDesktop.SpecText = "3840×2160 · 60 Hz · RGB Full · 8-bit";
+            cardDesktop.SpecText = "3840\u00D72160 \u00B7 60 Hz \u00B7 RGB Full \u00B7 8-bit";
             cardDesktop.SubText = "Everyday use";
             cardDesktop.Location = new Point(gx, gy); cardDesktop.Size = new Size(cardW, cardH);
             cardDesktop.Click += delegate { if(cb.Desktop != null) cb.Desktop(); };
             gPre.Controls.Add(cardDesktop);
             cardMovie = new PresetCardButton();
             cardMovie.Letter = "M"; cardMovie.TitleText = "Movie"; cardMovie.BadgeColor = Theme.Green;
-            cardMovie.SpecText = "3840×2160 · 30 Hz · RGB Full · 10-bit";
+            cardMovie.SpecText = "3840\u00D72160 \u00B7 30 Hz \u00B7 RGB Full \u00B7 10-bit";
             cardMovie.SubText = "Auto-set while MPC is open";
             cardMovie.Location = new Point(gx + cardW + Theme.Sc(12), gy); cardMovie.Size = new Size(cardW, cardH);
             cardMovie.Click += delegate { if(cb.Movie != null) cb.Movie(); };
@@ -107,24 +105,23 @@ namespace MpcMovieDisplay {
             int rowH = Theme.Sc(126);
             int leftW = Theme.Sc(462);
             int rightW = W - leftW - Theme.Sc(10);
-            GroupPanel gOut = Group("Actual output — live", LM, y, leftW, rowH);
+            GroupPanel gOut = Group("Actual output \u2014 live", LM, y, leftW, rowH);
             dotMatches = new RoundDot(Theme.Green, gOut.BackColor, Theme.Sc(7));
             dotMatches.Location = new Point(gx, gy + Theme.Sc(3));
             gOut.Controls.Add(dotMatches);
-            lblMatches = Lab(gOut, "Matches Movie preset ✓", Theme.Font(11, true), Theme.Green, gx + Theme.Sc(13), gy, leftW - gx * 2 - Theme.Sc(13), Theme.Sc(15));
-            lblOut1 = Lab(gOut, "—", Theme.Mono(15, true), Color.FromArgb(242, 246, 251), gx, gy + Theme.Sc(22), leftW - gx * 2, Theme.Sc(20));
-            lblOut2 = Lab(gOut, "—", Theme.Mono(15, true), Color.FromArgb(242, 246, 251), gx, gy + Theme.Sc(44), leftW - gx * 2, Theme.Sc(20));
-            lblMeta = Lab(gOut, "—", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(70), leftW - gx * 2, Theme.Sc(16));
+            lblMatches = Lab(gOut, "Matches Movie preset \u2713", Theme.Font(11, true), Theme.Green, gx + Theme.Sc(13), gy, leftW - gx * 2 - Theme.Sc(13), Theme.Sc(15));
+            lblOut1 = Lab(gOut, "\u2014", Theme.Mono(15, true), Color.FromArgb(242, 246, 251), gx, gy + Theme.Sc(22), leftW - gx * 2, Theme.Sc(20));
+            lblOut2 = Lab(gOut, "\u2014", Theme.Mono(15, true), Color.FromArgb(242, 246, 251), gx, gy + Theme.Sc(44), leftW - gx * 2, Theme.Sc(20));
+            lblMeta = Lab(gOut, "\u2014", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(70), leftW - gx * 2, Theme.Sc(16));
 
             GroupPanel gHdr = Group("Windows HDR", LM + leftW + Theme.Sc(10), y, rightW, rowH);
             hdrPill = new StatusPill();
             hdrPill.Location = new Point(gx, gy);
             gHdr.Controls.Add(hdrPill);
             hdrPill.SetState("Off", Theme.GrayChip, Theme.TextSecondary, Color.FromArgb(36, 133, 147, 166), Color.FromArgb(90, 133, 147, 166));
-            Lab(gHdr, "10-bit is active — this does not mean HDR is on.", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(30), rightW - gx * 2, Theme.Sc(30));
+            Lab(gHdr, "10-bit is active \u2014 this does not mean HDR is on.", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(30), rightW - gx * 2, Theme.Sc(30));
             ThemeButton btnHdr = new ThemeButton();
             btnHdr.Kind = 0; btnHdr.Font = Theme.Font(12, true);
-            btnHdr.Glyph = Theme.GlyphExternal;
             btnHdr.Text = "Open Windows HDR settings";
             btnHdr.Location = new Point(gx, rowH - Theme.Sc(13) - Theme.Sc(32));
             btnHdr.Size = new Size(rightW - gx * 2, Theme.Sc(32));
@@ -157,7 +154,6 @@ namespace MpcMovieDisplay {
             // ---- Restore Desktop ----
             ThemeButton btnRestore = new ThemeButton();
             btnRestore.Kind = 1; btnRestore.Font = Theme.Font(14, true);
-            btnRestore.Glyph = Theme.GlyphRestore;
             btnRestore.Text = "Restore Desktop";
             btnRestore.Location = new Point(LM, y); btnRestore.Size = new Size(W, Theme.Sc(40));
             btnRestore.Click += delegate { if(cb.RestoreDesktop != null) cb.RestoreDesktop(); };
@@ -166,27 +162,23 @@ namespace MpcMovieDisplay {
 
             // ---- Advanced: fallback ----
             int advH = Theme.Sc(72);
-            GroupPanel gAdv = Group("Advanced — fallback", LM, y, W, advH);
+            GroupPanel gAdv = Group("Advanced \u2014 fallback", LM, y, W, advH);
             gAdv.TitleColor = Theme.Amber; gAdv.BorderColor = Color.FromArgb(78, 235, 165, 45);
-            Lab(gAdv, "⚠", Theme.Font(16, false), Theme.Amber, gx, gy + Theme.Sc(2), Theme.Sc(22), Theme.Sc(22));
-            Lab(gAdv, "60 Hz · YCbCr 4:2:0 Limited · 8-bit", Theme.Mono(12, false), Color.FromArgb(231, 236, 243), gx + Theme.Sc(28), gy, innerW - Theme.Sc(160), Theme.Sc(16));
+            Lab(gAdv, "\u26A0", Theme.Font(16, false), Theme.Amber, gx, gy + Theme.Sc(2), Theme.Sc(22), Theme.Sc(22));
+            Lab(gAdv, "60 Hz \u00B7 YCbCr 4:2:0 Limited \u00B7 8-bit", Theme.Mono(12, false), Color.FromArgb(231, 236, 243), gx + Theme.Sc(28), gy, innerW - Theme.Sc(160), Theme.Sc(16));
             Lab(gAdv, "Reduces text clarity. Use only if RGB Full at 4K60 is unreliable.", Theme.Font(11, false), Theme.TextSecondary, gx + Theme.Sc(28), gy + Theme.Sc(18), innerW - Theme.Sc(160), Theme.Sc(16));
-            chkFallback = new ThemeCheckBox();
-            chkFallback.AccentColor = Theme.Amber;
-            chkFallback.Font = Theme.Font(12, false);
-            chkFallback.Text = "Use fallback";
-            chkFallback.Location = new Point(gx + innerW - Theme.Sc(110), gy + Theme.Sc(6));
-            chkFallback.Size = new Size(Theme.Sc(110), Theme.Sc(22));
-            chkFallback.Click += delegate { if(cb.ToggleFallback != null) cb.ToggleFallback(); };
-            gAdv.Controls.Add(chkFallback);
+            tglFallback = new ToggleSwitch();
+            tglFallback.SetAccent(Theme.Amber, Color.FromArgb(214, 150, 40));
+            tglFallback.Location = new Point(gx + innerW - Theme.Sc(120), gy + Theme.Sc(6));
+            tglFallback.Click += delegate { if(cb.ToggleFallback != null) cb.ToggleFallback(); };
+            gAdv.Controls.Add(tglFallback);
+            Lab(gAdv, "Use fallback", Theme.Font(12, false), Theme.TextSecondary, gx + innerW - Theme.Sc(74), gy + Theme.Sc(8), Theme.Sc(74), Theme.Sc(18));
             y += advH + Theme.Sc(11);
 
             // ---- Diagnostics (expander) ----
             btnDiag = new ThemeButton();
             btnDiag.Kind = 0; btnDiag.Font = Theme.Font(13, true);
-            btnDiag.Glyph = Theme.GlyphDiag;
-            btnDiag.TrailGlyph = Theme.GlyphDown;
-            btnDiag.Text = "Diagnostics";
+            btnDiag.Text = "Diagnostics  \u25BE";
             btnDiag.Location = new Point(LM, y); btnDiag.Size = new Size(W, Theme.Sc(38));
             btnDiag.Click += delegate { ToggleDiag(); };
             Body.Controls.Add(btnDiag);
@@ -207,7 +199,7 @@ namespace MpcMovieDisplay {
         void BuildDiag(GroupPanel p, int gx, int innerW) {
             int gy = Theme.Sc(18);
             int half = innerW / 2;
-            string[] names = { "Recovery helper — Running", "Display identity — Matched", "NVIDIA driver — nvapi64 loaded", "Instance lock — Held" };
+            string[] names = { "Recovery helper \u2014 Running", "Display identity \u2014 Matched", "NVIDIA driver \u2014 nvapi64 loaded", "Instance lock \u2014 Held" };
             for(int i = 0; i < 4; i++) {
                 int col = i % 2, row = i / 2;
                 int x = gx + col * half;
@@ -218,15 +210,15 @@ namespace MpcMovieDisplay {
                 Lab(p, names[i], Theme.Font(12, false), Theme.TextSecondary, x + Theme.Sc(12), yy, half - Theme.Sc(16), Theme.Sc(16));
             }
             int cy = gy + Theme.Sc(52);
-            Lab(p, "Movie 4K30 RGB Full 10-bit ✓", Theme.Mono(11, false), Theme.Green, gx, cy, half - Theme.Sc(8), Theme.Sc(16));
-            Lab(p, "Desktop 4K60 RGB Full 8-bit ✓", Theme.Mono(11, false), Theme.Blue, gx + half, cy, half - Theme.Sc(8), Theme.Sc(16));
+            Lab(p, "Movie 4K30 RGB Full 10-bit \u2713", Theme.Mono(11, false), Theme.Green, gx, cy, half - Theme.Sc(8), Theme.Sc(16));
+            Lab(p, "Desktop 4K60 RGB Full 8-bit \u2713", Theme.Mono(11, false), Theme.Blue, gx + half, cy, half - Theme.Sc(8), Theme.Sc(16));
 
             Panel log = new Panel();
             log.BackColor = Theme.Sunken;
             log.Location = new Point(gx, cy + Theme.Sc(24));
             log.Size = new Size(innerW, Theme.Sc(66));
             p.Controls.Add(log);
-            Lab(log, "21:14:02  Applying movie preset.\r\n21:14:05  Movie mode verified — 3840×2160, 30 Hz, RGB Full, 10-bit.\r\n21:14:05  Windows HDR could not be confirmed: Off.",
+            Lab(log, "21:14:02  Applying movie preset.\r\n21:14:05  Movie mode verified \u2014 3840\u00D72160, 30 Hz, RGB Full, 10-bit.\r\n21:14:05  Windows HDR could not be confirmed: Off.",
                 Theme.Mono(11, false), Theme.TextSecondary, Theme.Sc(10), Theme.Sc(8), innerW - Theme.Sc(20), Theme.Sc(52));
 
             int by = cy + Theme.Sc(24) + Theme.Sc(66) + Theme.Sc(12);
@@ -253,8 +245,7 @@ namespace MpcMovieDisplay {
         void ToggleDiag() {
             diagOpen = !diagOpen;
             diagPanel.Visible = diagOpen;
-            btnDiag.TrailGlyph = diagOpen ? Theme.GlyphUp : Theme.GlyphDown;
-            btnDiag.Invalidate();
+            btnDiag.Text = diagOpen ? "Diagnostics  \u25B4" : "Diagnostics  \u25BE";
             int bottom = diagOpen ? diagPanel.Bottom : collapsedBottom;
             SetClientPixelHeight(titleH + bottom + Theme.Sc(13));
         }
@@ -263,13 +254,13 @@ namespace MpcMovieDisplay {
         public void SetStatus(StatusView v) {
             if(IsDisposed) return;
             btnDisplay.Text = string.IsNullOrEmpty(v.DisplayName) ? "No display selected" :
-                v.DisplayName + "    ·    " + v.Width + " × " + v.Height;
-            lblOut1.Text = v.Width + " × " + v.Height + "  ·  " + v.Freq + " Hz";
-            lblOut2.Text = v.Format + " " + v.Range + "  ·  " + v.Bits + "-bit";
+                v.DisplayName + "    \u00B7    " + v.Width + " \u00D7 " + v.Height;
+            lblOut1.Text = v.Width + " \u00D7 " + v.Height + "  \u00B7  " + v.Freq + " Hz";
+            lblOut2.Text = v.Format + " " + v.Range + "  \u00B7  " + v.Bits + "-bit";
             lblMeta.Text = "Control: " + v.Control + "     MPC: " + v.Mpc;
 
-            if(v.MatchesMovie) { lblMatches.Text = "Matches Movie preset ✓"; lblMatches.ForeColor = Theme.Green; dotMatches.Dot = Theme.Green; }
-            else if(v.MatchesDesktop) { lblMatches.Text = "Matches Desktop preset ✓"; lblMatches.ForeColor = Theme.Blue; dotMatches.Dot = Theme.Blue; }
+            if(v.MatchesMovie) { lblMatches.Text = "Matches Movie preset \u2713"; lblMatches.ForeColor = Theme.Green; dotMatches.Dot = Theme.Green; }
+            else if(v.MatchesDesktop) { lblMatches.Text = "Matches Desktop preset \u2713"; lblMatches.ForeColor = Theme.Blue; dotMatches.Dot = Theme.Blue; }
             else { lblMatches.Text = "Custom / unverified"; lblMatches.ForeColor = Theme.Amber; dotMatches.Dot = Theme.Amber; }
             dotMatches.Invalidate();
 
@@ -287,7 +278,7 @@ namespace MpcMovieDisplay {
             SetFallback(v.Fallback);
         }
         public void SetAutomatic(bool on) { if(tglAuto != null) { tglAuto.Checked = on; tglAuto.Invalidate(); } }
-        public void SetFallback(bool on) { if(chkFallback != null) { chkFallback.Checked = on; chkFallback.Invalidate(); } }
+        public void SetFallback(bool on) { if(tglFallback != null) { tglFallback.Checked = on; tglFallback.Invalidate(); } }
         public void SetStartup(bool on) { if(tglStartup != null) { tglStartup.Checked = on; tglStartup.Invalidate(); } }
     }
 }

@@ -53,16 +53,6 @@ namespace MpcMovieDisplay {
         }
         public static Font Font(int px, bool bold) { return Get("Segoe UI", px, bold); }
         public static Font Mono(int px, bool bold) { return Get("Consolas", px, bold); }
-        // Windows' built-in icon font (Windows 10/11). Glyph codes are MDL2.
-        public static Font Icon(int px) { return Get("Segoe MDL2 Assets", px, false); }
-
-        // Glyph codes used by the UI.
-        public const string GlyphMonitor = ""; // TVMonitor
-        public const string GlyphExternal = ""; // OpenInNewWindow
-        public const string GlyphRestore = ""; // Refresh
-        public const string GlyphDiag = ""; // Diagnostic
-        public const string GlyphDown = ""; // ChevronDown
-        public const string GlyphUp = ""; // ChevronUp
 
         public static GraphicsPath Round(Rectangle r, int radius) {
             GraphicsPath p = new GraphicsPath();
@@ -160,8 +150,6 @@ namespace MpcMovieDisplay {
     // 2 = sunken field (left-aligned text + chevron, for the display selector).
     class ThemeButton : Button {
         public int Kind = 0;
-        public string Glyph = null;       // leading MDL2 glyph
-        public string TrailGlyph = null;  // right-aligned MDL2 glyph
         public ThemeButton() {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             FlatStyle = FlatStyle.Flat; FlatAppearance.BorderSize = 0;
@@ -180,16 +168,8 @@ namespace MpcMovieDisplay {
                     using(Pen pen = new Pen(Theme.BorderStrong)) g.DrawPath(pen, p);
                 }
                 int pad = Theme.Sc(12);
-                int tx = pad;
-                if(!string.IsNullOrEmpty(Glyph)) {
-                    Font icf2 = Theme.Icon(14);
-                    int gw2 = TextRenderer.MeasureText(Glyph, icf2, new Size(200, 200), TextFormatFlags.NoPadding).Width;
-                    TextRenderer.DrawText(g, Glyph, icf2, new Rectangle(pad, 0, gw2, Height), Theme.TextLabel,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-                    tx = pad + gw2 + Theme.Sc(9);
-                }
                 TextRenderer.DrawText(g, Text, Font,
-                    new Rectangle(tx, 0, Width - tx - Theme.Sc(28), Height), Theme.TextPrimary,
+                    new Rectangle(pad, 0, Width - pad - Theme.Sc(28), Height), Theme.TextPrimary,
                     TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
                 using(Pen pen = new Pen(Theme.TextLabel, Theme.Scale * 1.3f)) {
                     int cx = Width - Theme.Sc(18), cy = Height / 2 - Theme.Sc(1), s = Theme.Sc(4);
@@ -208,60 +188,8 @@ namespace MpcMovieDisplay {
                     fg = Enabled ? Theme.TextPrimary : Theme.TextMuted;
                 }
             }
-            Font icf = Theme.Icon(14);
-            int gw = 0, gap = 0;
-            if(!string.IsNullOrEmpty(Glyph)) {
-                gw = TextRenderer.MeasureText(Glyph, icf, new Size(200, 200), TextFormatFlags.NoPadding).Width;
-                gap = Theme.Sc(8);
-            }
-            int tw = TextRenderer.MeasureText(Text, Font, new Size(2000, 2000), TextFormatFlags.NoPadding).Width;
-            int sx = (Width - (gw + gap + tw)) / 2;
-            if(sx < Theme.Sc(8)) sx = Theme.Sc(8);
-            if(gw > 0)
-                TextRenderer.DrawText(g, Glyph, icf, new Rectangle(sx, 0, gw, Height), fg,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-            TextRenderer.DrawText(g, Text, Font, new Rectangle(sx + gw + gap, 0, Width - sx - gw - gap, Height), fg,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-            if(!string.IsNullOrEmpty(TrailGlyph))
-                TextRenderer.DrawText(g, TrailGlyph, icf, new Rectangle(0, 0, Width - Theme.Sc(12), Height), fg,
-                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        }
-    }
-
-    // Dark checkbox with a tinted check, used for the Advanced fallback option.
-    class ThemeCheckBox : CheckBox {
-        public Color AccentColor = Theme.AccentA;
-        public ThemeCheckBox() {
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            AutoCheck = false; AutoSize = false; Cursor = Cursors.Hand;
-            Height = Theme.Sc(22);
-        }
-        protected override void OnPaint(PaintEventArgs e) {
-            Graphics g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Parent != null ? Parent.BackColor : BackColor);
-            int box = Theme.Sc(16);
-            int by = (Height - box) / 2;
-            Rectangle br = new Rectangle(0, by, box, box);
-            using(GraphicsPath p = Theme.Round(br, Theme.Sc(3))) {
-                if(Checked) {
-                    using(SolidBrush b = new SolidBrush(AccentColor)) g.FillPath(b, p);
-                } else {
-                    using(SolidBrush b = new SolidBrush(Theme.Sunken)) g.FillPath(b, p);
-                    using(Pen pen = new Pen(Theme.BorderStrong)) g.DrawPath(pen, p);
-                }
-            }
-            if(Checked) {
-                using(Pen pen = new Pen(Theme.DarkInk, Theme.Scale * 1.8f)) {
-                    g.DrawLines(pen, new Point[] {
-                        new Point(br.X + box / 4, br.Y + box / 2),
-                        new Point(br.X + box / 2 - Theme.Sc(1), br.Bottom - box / 4),
-                        new Point(br.Right - box / 5, br.Y + box / 4)
-                    });
-                }
-            }
-            TextRenderer.DrawText(g, Text, Font,
-                new Rectangle(box + Theme.Sc(8), 0, Width - box - Theme.Sc(8), Height),
-                Theme.TextSecondary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            TextRenderer.DrawText(g, Text, Font, new Rectangle(0, 0, Width, Height), fg,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
     }
 

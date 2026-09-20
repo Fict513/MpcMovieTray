@@ -193,6 +193,15 @@ rollback and recovery behaviour is unchanged from 1.0.1.
 The tray menu uses the same dark theme, and the 15-second confirmation shows a
 countdown bar with Keep settings / Restore now.
 
+UI TEST MODE
+Running MpcMovieTray.exe --uitest opens the settings window with fake data for
+checking layout, DPI scaling and the confirmation dialog on any machine. It makes
+no NVIDIA or display API calls, takes no single-instance lock, starts no recovery
+helper and saves nothing. Selecting a preset opens the real 15-second confirm
+dialog so the countdown and Restore button can be exercised safely; "Open Windows
+HDR settings" cycles the HDR indicator through On / Off / Unknown. Close the
+window to exit. Build.cmd also refreshes SHA256.txt after a successful build.
+
 ICON UPDATE (1.0.1)
 The supplied cyan-to-pink HDR monitor artwork is embedded in the executable
 as a multi-resolution Windows icon (16 through 256 pixels). The original PNG

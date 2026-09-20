@@ -11,6 +11,15 @@ namespace MpcMovieDisplay {
         [STAThread] static void Main(string[] args) {
             if(args.Length>0 && args[0]=="--guard") { Guard(args); return; }
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+            // Catch everything on the UI thread so failures report a full stack
+            // trace instead of the generic .NET crash dialog.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException+=delegate(object sender,ThreadExceptionEventArgs te) { ReportFatal(te.Exception); };
+            AppDomain.CurrentDomain.UnhandledException+=delegate(object sender,UnhandledExceptionEventArgs ue) { ReportFatal(ue.ExceptionObject as Exception); };
+            if(args.Length>0 && args[0]=="--uitest") {
+                try { UiTest(); } catch(Exception e) { ReportFatal(e); }
+                return;
+            }
             bool locked=false;
             using(Mutex mutex=new Mutex(false,MutexName)) {
                 try {
@@ -19,10 +28,67 @@ namespace MpcMovieDisplay {
                     if(!Environment.Is64BitProcess) throw new Exception("This application needs 64-bit Windows.");
                     Application.Run(new TrayContext());
                 } catch(Exception e) {
-                    Store.Log("Fatal: "+e);
-                    MessageBox.Show(e.Message+"\n\nAny saved recovery data will be retained.","MPC Movie Tray",MessageBoxButtons.OK,MessageBoxIcon.Error);
+                    ReportFatal(e);
                 } finally { Native.Close(); if(locked) mutex.ReleaseMutex(); }
             }
+        }
+        static bool reported;
+        static void ReportFatal(Exception e) {
+            string detail = e==null ? "Unknown error (no exception object)." : e.ToString();
+            try { Store.Log("FATAL: "+detail); } catch { }
+            if(reported) return;
+            reported=true;
+            try {
+                MessageBox.Show(
+                    "MPC Movie Tray hit an unexpected error. Press Ctrl+C to copy this text."
+                    +"\n\nIt is also written to:\n"+Store.FilePath("activity.log")
+                    +"\n\nAny saved recovery data is retained."
+                    +"\n\n"+detail,
+                    "MPC Movie Tray",MessageBoxButtons.OK,MessageBoxIcon.Error);
+            } catch { }
+        }
+        // UI test mode: exercises the settings window and the 15-second confirm
+        // dialog with fake data. Makes NO NVIDIA or display API calls, takes no
+        // single-instance lock and starts no recovery helper. Nothing is saved.
+        static void UiTest() {
+            SettingsForm ui=null;
+            bool movieActive=false, automatic=true, fallback=false, startup=false;
+            int hdrState=1; // 0 = On, 1 = Off, 2 = Unknown
+            SettingsCallbacks cb=new SettingsCallbacks();
+            cb.Movie=delegate { if(Dialogs.Confirm("4K30 - RGB Full - 10-bit")) movieActive=true; };
+            cb.Desktop=delegate { if(Dialogs.Confirm(fallback?"4K60 - YCbCr 4:2:0 - 8-bit":"4K60 - RGB Full - 8-bit")) movieActive=false; };
+            cb.RestoreDesktop=cb.Desktop;
+            cb.ToggleAutomatic=delegate { automatic=!automatic; };
+            cb.ToggleFallback=delegate { fallback=!fallback; };
+            cb.ToggleStartup=delegate { startup=!startup; if(ui!=null && !ui.IsDisposed) ui.SetStartup(startup); };
+            cb.OpenHdr=delegate { hdrState=(hdrState+1)%3; }; // cycles On / Off / Unknown
+            cb.ChooseDisplay=delegate { MessageBox.Show("UI test mode: no display is selected or changed.","MPC Movie Tray"); };
+            cb.OpenLog=delegate { MessageBox.Show("UI test mode: the activity log is not used.","MPC Movie Tray"); };
+            cb.OpenReadme=delegate { MessageBox.Show("UI test mode: the README is not opened.","MPC Movie Tray"); };
+            cb.TestAgain=delegate { MessageBox.Show("UI test mode: nothing is stored.","MPC Movie Tray"); };
+            ui=new SettingsForm(cb);
+            ui.SetStartup(startup);
+            System.Windows.Forms.Timer feed=new System.Windows.Forms.Timer();
+            feed.Interval=500;
+            feed.Tick+=delegate {
+                if(ui==null || ui.IsDisposed) return;
+                StatusView v=new StatusView();
+                v.DisplayName="\\\\.\\DISPLAY2   (UI TEST - no hardware)";
+                v.Width=3840; v.Height=2160;
+                v.Freq=movieActive?30:60;
+                v.Format=(!movieActive && fallback)?"YCbCr 4:2:0":"RGB";
+                v.Range=(!movieActive && fallback)?"Limited":"Full";
+                v.Bits=movieActive?"10":"8";
+                v.Hdr=hdrState==0?"On":hdrState==1?"Off":"Unknown (advanced colour on)";
+                v.Control=automatic?"Automatic":"Manual";
+                v.Mpc=movieActive?1:0;
+                v.MatchesMovie=movieActive; v.MatchesDesktop=!movieActive;
+                v.Automatic=automatic; v.Fallback=fallback;
+                ui.SetStatus(v);
+            };
+            feed.Start();
+            Application.Run(ui);
+            feed.Stop(); feed.Dispose();
         }
         static void Guard(string[] args) {
             try {

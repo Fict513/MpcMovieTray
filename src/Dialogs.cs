@@ -69,7 +69,6 @@ namespace MpcMovieDisplay {
 
                 ThemeButton revert = new ThemeButton();
                 revert.Kind = 0; revert.Font = Theme.Font(14, true); revert.Text = "Restore now";
-                revert.Glyph = Theme.GlyphRestore;
                 revert.Size = new Size((W - Theme.Sc(10)) / 2, Theme.Sc(40));
                 revert.Location = new Point(gx + (W - Theme.Sc(10)) / 2 + Theme.Sc(10), Theme.Sc(150));
                 revert.DialogResult = DialogResult.Cancel;
