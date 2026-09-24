@@ -66,6 +66,15 @@ namespace MpcMovieDisplay {
             cb.OpenLog=delegate { MessageBox.Show("UI test mode: the activity log is not used.","MPC Movie Tray"); };
             cb.OpenReadme=delegate { MessageBox.Show("UI test mode: the README is not opened.","MPC Movie Tray"); };
             cb.TestAgain=delegate { MessageBox.Show("UI test mode: nothing is stored.","MPC Movie Tray"); };
+            cb.RefreshDiagnostics=delegate {
+                if(ui==null || ui.IsDisposed) return;
+                DiagView dv=new DiagView();
+                dv.Pending="None"; dv.PendingOk=true;
+                dv.MovieLabel="Movie 4K24 RGB Full 10-bit (untested)";
+                dv.DesktopLabel="Desktop 4K60 RGB Full 8-bit (untested)";
+                dv.LogTail="UI TEST MODE - no real diagnostics.\r\nHelper and display access report Unavailable by design.";
+                ui.SetDiagnostics(dv);
+            };
             ui=new SettingsForm(cb);
             ui.SetStartup(startup);
             ui.SetMovieHz(24);

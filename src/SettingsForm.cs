@@ -14,10 +14,22 @@ namespace MpcMovieDisplay {
         public bool MatchesMovie, MatchesDesktop, Automatic, Fallback;
     }
 
+    // Real diagnostics state, pushed from TrayContext while the panel is open.
+    public struct DiagView {
+        public bool HelperRunning;
+        public bool DisplayOk;
+        public string Pending;
+        public bool PendingOk;
+        public bool MovieConfirmed, DesktopConfirmed;
+        public string MovieLabel, DesktopLabel;
+        public string LogTail;
+    }
+
     // Actions wired to the existing TrayContext logic.
     public class SettingsCallbacks {
         public Action Movie, Desktop, RestoreDesktop, ToggleAutomatic, ToggleStartup,
-                      ToggleFallback, OpenHdr, ChooseDisplay, OpenLog, OpenReadme, TestAgain;
+                      ToggleFallback, OpenHdr, ChooseDisplay, OpenLog, OpenReadme, TestAgain,
+                      RefreshDiagnostics;
     }
 
     // The main settings window: compact grouped layout matching the approved
@@ -32,6 +44,9 @@ namespace MpcMovieDisplay {
         StatusPill hdrPill;
         ToggleSwitch tglAuto, tglStartup, tglFallback;
         GroupPanel diagPanel;
+        RoundDot[] diagDots = new RoundDot[4];
+        Label[] diagLabels = new Label[4];
+        Label diagMovie, diagDesktop, diagLog;
         bool diagOpen;
         int titleH = Theme.Sc(36);
         int collapsedBottom;
@@ -199,27 +214,26 @@ namespace MpcMovieDisplay {
         void BuildDiag(GroupPanel p, int gx, int innerW) {
             int gy = Theme.Sc(18);
             int half = innerW / 2;
-            string[] names = { "Recovery helper \u2014 Running", "Display identity \u2014 Matched", "NVIDIA driver \u2014 nvapi64 loaded", "Instance lock \u2014 Held" };
             for(int i = 0; i < 4; i++) {
                 int col = i % 2, row = i / 2;
                 int x = gx + col * half;
                 int yy = gy + row * Theme.Sc(22);
-                RoundDot d = new RoundDot(Theme.Green, p.BackColor, Theme.Sc(6));
+                RoundDot d = new RoundDot(Theme.TextMuted, p.BackColor, Theme.Sc(6));
                 d.Location = new Point(x, yy + Theme.Sc(4));
                 p.Controls.Add(d);
-                Lab(p, names[i], Theme.Font(12, false), Theme.TextSecondary, x + Theme.Sc(12), yy, half - Theme.Sc(16), Theme.Sc(16));
+                diagDots[i] = d;
+                diagLabels[i] = Lab(p, "\u2014", Theme.Font(12, false), Theme.TextSecondary, x + Theme.Sc(12), yy, half - Theme.Sc(16), Theme.Sc(16));
             }
             int cy = gy + Theme.Sc(52);
-            Lab(p, "Movie 4K RGB Full 10-bit \u2713", Theme.Mono(11, false), Theme.Green, gx, cy, half - Theme.Sc(8), Theme.Sc(16));
-            Lab(p, "Desktop 4K60 RGB Full 8-bit \u2713", Theme.Mono(11, false), Theme.Blue, gx + half, cy, half - Theme.Sc(8), Theme.Sc(16));
+            diagMovie = Lab(p, "\u2014", Theme.Mono(11, false), Theme.TextMuted, gx, cy, half - Theme.Sc(8), Theme.Sc(16));
+            diagDesktop = Lab(p, "\u2014", Theme.Mono(11, false), Theme.TextMuted, gx + half, cy, half - Theme.Sc(8), Theme.Sc(16));
 
             Panel log = new Panel();
             log.BackColor = Theme.Sunken;
             log.Location = new Point(gx, cy + Theme.Sc(24));
             log.Size = new Size(innerW, Theme.Sc(66));
             p.Controls.Add(log);
-            Lab(log, "21:14:02  Applying movie preset.\r\n21:14:05  Movie mode verified \u2014 3840\u00D72160, RGB Full, 10-bit.\r\n21:14:05  Windows HDR could not be confirmed: Off.",
-                Theme.Mono(11, false), Theme.TextSecondary, Theme.Sc(10), Theme.Sc(8), innerW - Theme.Sc(20), Theme.Sc(52));
+            diagLog = Lab(log, "\u2014", Theme.Mono(11, false), Theme.TextSecondary, Theme.Sc(10), Theme.Sc(8), innerW - Theme.Sc(20), Theme.Sc(52));
 
             int by = cy + Theme.Sc(24) + Theme.Sc(66) + Theme.Sc(12);
             ThemeButton b1 = DiagButton("Open activity log", gx, by, Theme.Sc(150));
@@ -248,6 +262,7 @@ namespace MpcMovieDisplay {
             btnDiag.Text = diagOpen ? "Diagnostics  \u25B4" : "Diagnostics  \u25BE";
             int bottom = diagOpen ? diagPanel.Bottom : collapsedBottom;
             SetClientPixelHeight(titleH + bottom + Theme.Sc(13));
+            if(diagOpen && cb.RefreshDiagnostics != null) cb.RefreshDiagnostics();
         }
 
         // ---- Live updates from TrayContext ----
@@ -279,6 +294,25 @@ namespace MpcMovieDisplay {
         }
         public void SetAutomatic(bool on) { if(tglAuto != null) { tglAuto.Checked = on; tglAuto.Invalidate(); } }
         public void SetFallback(bool on) { if(tglFallback != null) { tglFallback.Checked = on; tglFallback.Invalidate(); } }
+        public bool DiagnosticsOpen { get { return diagOpen; } }
+        public void SetDiagnostics(DiagView d) {
+            if(IsDisposed || diagLabels[0] == null) return;
+            DiagRow(0, d.HelperRunning, "Recovery helper \u2014 " + (d.HelperRunning ? "Running" : "Not running"));
+            DiagRow(1, d.DisplayOk, "Display access \u2014 " + (d.DisplayOk ? "OK" : "Unavailable"));
+            DiagRow(2, d.PendingOk, "Pending recovery \u2014 " + (d.Pending == null ? "?" : d.Pending));
+            int tested = (d.MovieConfirmed ? 1 : 0) + (d.DesktopConfirmed ? 1 : 0);
+            DiagRow(3, tested == 2, "Presets tested \u2014 " + tested + " of 2");
+            diagMovie.Text = d.MovieLabel == null ? "" : d.MovieLabel;
+            diagMovie.ForeColor = d.MovieConfirmed ? Theme.Green : Theme.TextMuted;
+            diagDesktop.Text = d.DesktopLabel == null ? "" : d.DesktopLabel;
+            diagDesktop.ForeColor = d.DesktopConfirmed ? Theme.Blue : Theme.TextMuted;
+            diagLog.Text = d.LogTail == null ? "" : d.LogTail;
+        }
+        void DiagRow(int i, bool ok, string text) {
+            diagDots[i].Dot = ok ? Theme.Green : Theme.Amber;
+            diagDots[i].Invalidate();
+            diagLabels[i].Text = text;
+        }
         public void SetMovieHz(uint hz) {
             if(cardMovie == null) return;
             cardMovie.SpecText = "3840\u00D72160 \u00B7 " + hz + " Hz \u00B7 RGB Full \u00B7 10-bit";

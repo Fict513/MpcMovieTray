@@ -1,4 +1,4 @@
-MPC MOVIE TRAY 1.0.2
+MPC MOVIE TRAY 1.0.4
 Panasonic DX900 / NVIDIA / Windows 10 or 11 x64
 
 START HERE
@@ -51,7 +51,9 @@ Automatic            Movie mode whenever MPC-HC or MPC-BE is open.
 Choose TV/monitor    Select the target display; return the old one to Desktop first.
 Windows HDR settings Open Windows' HDR settings; it does not toggle HDR itself.
 Start with Windows   Optional, off by default; current-user startup only.
-Exit                 Apply/verify the Desktop preset and exit.
+Exit                 Apply/verify the Desktop preset and exit. If that preset
+                     cannot be applied, it reports the current output and offers
+                     to exit anyway rather than refusing to close.
 
 Green M icon = verified movie preset.
 Blue D icon  = verified desktop preset.
@@ -125,6 +127,11 @@ or 12-bit presets, and does not claim those are confirmed capabilities of your
 TV.
 
 EXIT, CRASHES AND RECOVERY
+If the Desktop preset cannot be applied on exit, the app no longer refuses to
+close. It reports the current output and asks whether to exit anyway. Recovery
+files are kept, and an unfinished change is still restored by the helper after
+the app closes. Choosing No leaves it in the tray so you can retry.
+
 Normal Exit deliberately returns to the selected Desktop preset even if MPC is
 still open. Cancelling a first-use Desktop test leaves the app running. Closing
 only the live-status window keeps the app in the tray.
@@ -210,6 +217,25 @@ rollback and recovery behaviour is unchanged from 1.0.1.
 The tray menu uses the same dark theme, and the 15-second confirmation shows a
 countdown bar with Keep settings / Restore now.
 
+DIAGNOSTICS
+The expandable Diagnostics panel reads live state. Nothing in it is assumed, and
+a row is green only when that thing is actually true.
+
+Recovery helper    Whether the independent helper process is running.
+Display access     Whether the saved display identity and the NVIDIA colour read
+                   currently succeed. Amber means the display is unreachable.
+Pending recovery   None, or an unfinished session/transition awaiting restore.
+Presets tested     How many of the two presets have passed their 15-second test
+                   for the CURRENT settings. Changing MovieHz or the desktop
+                   fallback resets the relevant one, by design.
+
+The two preset lines below those rows show the exact preset strings in use and
+whether each has been confirmed. The log box shows the last four lines of the
+real activity.log. Use "Open activity log" for the full file.
+
+In --uitest mode the helper and display access deliberately report Unavailable,
+and the log box says so, so test data can never be mistaken for real state.
+
 UI TEST MODE
 Running MpcMovieTray.exe --uitest opens the settings window with fake data for
 checking layout, DPI scaling and the confirmation dialog on any machine. It makes
@@ -226,6 +252,19 @@ and ICO are included in assets. Build.cmd embeds the icon on rebuild.
 Tray icons use a simplified monitor silhouette: green M = movie preset,
 blue D = desktop preset, amber ? = other/unknown settings. These icons do
 not assert that Windows HDR is enabled; check the separate HDR status.
+
+VERSION HISTORY
+1.0.4  Diagnostics panel reports real state instead of placeholder text. Exit no
+       longer refuses to close when the Desktop preset cannot be applied.
+       Sources are ASCII-only so the legacy compiler cannot misread them under a
+       non-UTF-8 system codepage.
+1.0.3  Movie refresh rate is configurable (MovieHz) and defaults to 24 Hz instead
+       of 30 Hz, removing 3:2 pulldown judder on 24 fps films. Added --uitest
+       mode and crash reporting with full stack traces. Build.cmd refreshes
+       SHA256.txt after a successful build.
+1.0.2  Dark settings window, themed tray menu, countdown confirmation dialog.
+1.0.1  Cyan-to-pink HDR monitor icon embedded in the executable.
+1.0    First compiled release.
 
 UPDATING
 Exit the previous tray app, then extract this package over the same folder

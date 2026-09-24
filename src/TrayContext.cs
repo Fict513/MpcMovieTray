@@ -153,8 +153,42 @@ namespace MpcMovieDisplay {
                 settings.Automatic=false;automatic.Checked=false;
                 statusLine.Text="Unavailable - choose/reconnect the TV";
                 tray.Icon=unknownIcon;tray.Text="MPC Movie Tray: display unavailable";
+                if(ui!=null && !ui.IsDisposed && ui.DiagnosticsOpen) { try{ui.SetDiagnostics(BuildDiagView(false));}catch{} }
                 try{Save();}catch{}
             }
+        }
+        // Real diagnostics. Every value is read from live state, never assumed.
+        DiagView BuildDiagView(bool displayOk) {
+            DiagView d=new DiagView();
+            d.HelperRunning=guard!=null && !guard.HasExited;
+            d.DisplayOk=displayOk;
+            bool trans=Store.Exists("transition.json"),sess=Store.Exists("session.json");
+            d.Pending=trans?"Transition pending":sess?"Session pending":"None";
+            d.PendingOk=!trans && !sess;
+            try {
+                d.MovieConfirmed=settings.Confirmed.Contains(Profiles.Key(settings,true));
+                d.DesktopConfirmed=settings.Confirmed.Contains(Profiles.Key(settings,false));
+            } catch { }
+            d.MovieLabel="Movie 4K"+settings.MovieHz+" RGB Full 10-bit"+(d.MovieConfirmed?" \u2713":" (untested)");
+            d.DesktopLabel="Desktop 4K60 "+(settings.Desktop420?"YCbCr 4:2:0 Limited":"RGB Full")+" 8-bit"+(d.DesktopConfirmed?" \u2713":" (untested)");
+            d.LogTail=LogTail(4);
+            return d;
+        }
+        // Last few lines of the real activity log, without loading the whole file.
+        static string LogTail(int lines) {
+            try {
+                string path=Store.FilePath("activity.log");
+                if(!File.Exists(path)) return "No activity logged yet.";
+                string[] buf=new string[lines]; int count=0; string line;
+                using(FileStream fs=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                using(StreamReader r=new StreamReader(fs))
+                    while((line=r.ReadLine())!=null) { buf[count%lines]=line; count++; }
+                if(count==0) return "No activity logged yet.";
+                int n=count<lines?count:lines;
+                string[] last=new string[n];
+                for(int i=0;i<n;i++) last[i]=buf[(count-n+i)%lines];
+                return string.Join("\r\n",last);
+            } catch(Exception e) { return "Log unavailable: "+e.Message; }
         }
         bool IsMovie() {
             try {return Policy.Matches(Native.Current(settings.DisplayName),Native.GetColor(settings.DisplayName),true,settings);}catch{return false;}
@@ -183,6 +217,7 @@ namespace MpcMovieDisplay {
                 v.Automatic=settings.Automatic; v.Fallback=settings.Desktop420;
                 ui.SetStatus(v);
             }
+            if(ui!=null && !ui.IsDisposed && ui.DiagnosticsOpen) ui.SetDiagnostics(BuildDiagView(true));
             if(movie && hdr=="Off" && lastHdr!="Off") Toast("Movie mode: Windows HDR is off","10-bit output is active. Windows HDR is off; your player may enable it when playback begins.");
             if(movie && hdr.StartsWith("Unknown") && lastHdr!=hdr) Store.Log("Windows HDR could not be confirmed: "+hdr);
             lastHdr=hdr;lastFault="";
@@ -294,6 +329,12 @@ namespace MpcMovieDisplay {
             cb.TestAgain=delegate{settings.Confirmed.Clear();Save();Toast("Preset tests reset","The next use of each preset will ask you to keep or revert it.");};
             ui=new SettingsForm(cb);
             ui.FormClosed+=delegate{ui=null;};
+            cb.RefreshDiagnostics=delegate{
+                if(ui==null || ui.IsDisposed) return;
+                bool ok=true;
+                try { Native.RequireIdentity(settings.DisplayName,settings.Identity); Native.GetColor(settings.DisplayName); } catch { ok=false; }
+                try { ui.SetDiagnostics(BuildDiagView(ok)); } catch { }
+            };
             ui.SetStartup(StartupEnabled());
             ui.SetMovieHz(settings.MovieHz);
             try{UpdateStatus();}catch{}
@@ -303,7 +344,20 @@ namespace MpcMovieDisplay {
             if(busy||closing)return;
             bool wasAutomatic=settings.Automatic;
             settings.Automatic=false;automatic.Checked=false;
-            if(Request(false)){settings.Automatic=wasAutomatic;Save();Shutdown();}
+            if(Request(false)) { settings.Automatic=wasAutomatic;Save();Shutdown();return; }
+            // The desktop preset could not be applied. Never trap the user in the
+            // tray: report the current output and let them leave anyway.
+            string state="could not be read";
+            try {
+                Mode m=Native.Current(settings.DisplayName);
+                state=m.Width+" x "+m.Height+", "+m.Frequency+" Hz";
+            } catch { }
+            if(MessageBox.Show(
+                "The desktop preset could not be applied, so the display may not be back to its usual settings."
+                +"\n\nCurrent output: "+state
+                +"\n\nExit anyway? Recovery files are kept, and if an unfinished change remains the recovery helper attempts to restore it after this app closes."
+                +"\n\nChoose No to stay in the tray and try again.",
+                "Exit without restoring?",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)==DialogResult.Yes) Shutdown();
         }
         void Shutdown() {
             closing=true;poll.Stop();click.Stop();tray.Visible=false;
