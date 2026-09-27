@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.7 - 2026-09-27
+
+### Changed
+- Replaced anti-aliased, font-rendered tray artwork with exact-pixel ARGB monitor
+  icons. The body and stand share one horizontal gradient, and flat glyphs remain
+  clear at 16, 20, 24, and 32 pixels.
+- Tray icons now follow Windows light/dark theme and system icon-size changes
+  without restarting the application. Native icon handles are released when the
+  cache is replaced and when the app exits.
+- Added hidden `--export-icons <folder>` artwork export (40 PNGs plus a dark/light
+  `icon-preview.png`) and `--icon-selftest` geometry, palette, mapping, and pixel
+  checks.
+
+### Manual test checklist (run on the TV)
+- Toggle Windows light/dark mode and display scaling; confirm the tray icon updates.
+- Open MPC -> Movie icon; close the last player -> Desktop icon.
+- Unplug the selected TV or force a preset mismatch; confirm the Unknown icon.
+- Run `MpcMovieTray.exe --export-icons .\artifacts\icons` and inspect
+  `icon-preview.png`.
+
 ## 1.0.5 - 2026-09-27
 
 ### Added

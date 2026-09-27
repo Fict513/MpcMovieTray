@@ -10,6 +10,8 @@ namespace MpcMovieDisplay {
         public static string MutexName { get { return "Local\\MpcMovieDisplay-"+WindowsIdentity.GetCurrent().User.Value; } }
         [STAThread] static void Main(string[] args) {
             if(args.Length>0 && args[0]=="--guard") { Guard(args); return; }
+            if(args.Length==2 && args[0]=="--export-icons") { TrayIconRenderer.Export(args[1]); return; }
+            if(args.Length==1 && args[0]=="--icon-selftest") { TrayIconRenderer.SelfTest(); return; }
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
             // Catch everything on the UI thread so failures report a full stack
             // trace instead of the generic .NET crash dialog.

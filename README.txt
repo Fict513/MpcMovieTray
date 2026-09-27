@@ -1,4 +1,4 @@
-MPC MOVIE TRAY 1.0.5
+MPC MOVIE TRAY 1.0.7
 Panasonic DX900 / NVIDIA / Windows 10 or 11 x64
 
 START HERE
@@ -257,6 +257,10 @@ blue D = desktop preset, amber ? = other/unknown settings. These icons do
 not assert that Windows HDR is enabled; check the separate HDR status.
 
 VERSION HISTORY
+1.0.7  Pixel-perfect, theme-aware tray icons now follow the Windows icon size and
+       colour-mode settings live. Use `--export-icons <folder>` to write the
+       40 state/design/theme PNGs and `icon-preview.png`; `--icon-selftest`
+       verifies tray-icon geometry and pixels without accessing display hardware.
 1.0.5  Dark UI polish pass: corrected low-contrast text colour, 105-degree brand
        gradient, restructured tray menu (Options/Tools submenus), "Players open"
        wording, new output-mismatch banner with Re-apply, "display not found"

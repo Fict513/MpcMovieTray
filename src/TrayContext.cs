@@ -1,8 +1,6 @@
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -13,21 +11,17 @@ namespace MpcMovieDisplay {
         ContextMenuStrip menu;
         ToolStripMenuItem automatic,statusLine,hdrLine,startup,desktop420,movieItem,desktopItem;
         Timer poll,click;
-        Icon movieIcon,desktopIcon,unknownIcon;
+        TrayIconSet icons;
         Process guard;
         bool busy,closing,movieOwned,initial=true;
         int emptySamples;
         string lastHdr="",lastFault="";
         SettingsForm ui;
-        [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr handle);
-
         public TrayContext() {
             try { settings=Store.Read<Settings>("settings.json") ?? new Settings(); }
             catch(Exception e) { Store.Log("Settings reset after read error: "+e.Message);settings=new Settings(); }
             if(settings.Confirmed==null) settings.Confirmed=new System.Collections.Generic.List<string>();
-            movieIcon=MakeIcon(Color.FromArgb(52,190,115),"M");
-            desktopIcon=MakeIcon(Color.FromArgb(50,146,240),"D");
-            unknownIcon=MakeIcon(Color.FromArgb(235,165,45),"?");
+            icons=new TrayIconSet();icons.EnsureCurrent();
             menu=new ContextMenuStrip();
             menu.Renderer=new DarkMenuRenderer();
             menu.BackColor=Theme.MenuBg;
@@ -61,7 +55,7 @@ namespace MpcMovieDisplay {
             Add(tools.DropDownItems,"Open README",(s,e)=>Open(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"README.txt")));
             menu.Items.Add(new ToolStripSeparator());
             Add("Exit and restore Desktop",(s,e)=>ExitToDesktop());
-            tray=new NotifyIcon {Visible=true,Icon=unknownIcon,Text="MPC Movie Tray",ContextMenuStrip=menu};
+            tray=new NotifyIcon {Visible=true,Icon=icons[TrayIconState.Unknown],Text="MPC Movie Tray",ContextMenuStrip=menu};
             click=new Timer {Interval=SystemInformation.DoubleClickTime};
             click.Tick+=(s,e)=>{click.Stop();Manual(!IsMovie());};
             tray.MouseClick+=(s,e)=>{if(e.Button==MouseButtons.Left && !busy){click.Stop();click.Start();}};
@@ -78,25 +72,6 @@ namespace MpcMovieDisplay {
             ToolStripMenuItem item=new ToolStripMenuItem(text);
             if(action!=null)item.Click+=(s,e)=>{try{action(s,e);}catch(Exception fault){Toast("Action failed",fault.Message,true);}};
             into.Add(item);return item;
-        }
-        static Icon MakeIcon(Color colour,string letter) {
-            using(Bitmap b=new Bitmap(32,32)) {
-                using(Graphics g=Graphics.FromImage(b)) {
-                    g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    g.Clear(Color.Transparent);
-                    using(Brush brush=new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(1,3,30,22),colour,
-                        letter=="M"?Color.FromArgb(233,105,177):Color.FromArgb(130,160,190),0f)) {
-                        g.FillRectangle(brush,1,3,30,22);
-                        g.FillRectangle(brush,14,25,4,3);
-                        g.FillRectangle(brush,8,28,16,3);
-                    }
-                    g.FillRectangle(Brushes.Black,4,6,24,16);
-                    using(Font f=new Font("Segoe UI",16,FontStyle.Bold,GraphicsUnit.Pixel))
-                    using(StringFormat sf=new StringFormat {Alignment=StringAlignment.Center,LineAlignment=StringAlignment.Center})
-                        g.DrawString(letter,f,Brushes.White,new RectangleF(3,3,26,22),sf);
-                }
-                IntPtr h=b.GetHicon(); try {using(Icon temp=Icon.FromHandle(h))return (Icon)temp.Clone();}finally{DestroyIcon(h);}
-            }
         }
         void Save() { Store.Save("settings.json",settings); }
         void Toast(string title,string text,bool error=false) {
@@ -135,6 +110,7 @@ namespace MpcMovieDisplay {
         void Tick() {
             if(busy || closing)return;
             try {
+                icons.EnsureCurrent();
                 if(initial) {
                     initial=false;busy=true;
                     try {
@@ -176,7 +152,7 @@ namespace MpcMovieDisplay {
                 settings.Automatic=false;automatic.Checked=false;
                 movieItem.Enabled=false;desktopItem.Enabled=false;
                 statusLine.Text="Panasonic TV not found \u00B7 Not connected";
-                tray.Icon=unknownIcon;tray.Text="MPC Movie Tray: display unavailable";
+                tray.Icon=icons[TrayIconState.Unknown];tray.Text="MPC Movie Tray: display unavailable";
                 if(ui!=null && !ui.IsDisposed) { try{ui.SetNotFound(true);}catch{} }
                 if(ui!=null && !ui.IsDisposed && ui.DiagnosticsOpen) { try{ui.SetDiagnostics(BuildDiagView(false));}catch{} }
                 try{Save();}catch{}
@@ -241,7 +217,7 @@ namespace MpcMovieDisplay {
             string shortSpec=movie?("4K"+settings.MovieHz):desktop?"4K60":(m.Frequency+"Hz");
             string tip=modeName+" \u00B7 "+shortSpec+" "+format+" "+range+" "+bits+"-bit \u00B7 HDR "+hdr+" \u00B7 "+(settings.Automatic?"Auto":"Manual");
             tray.Text=tip.Length>127?tip.Substring(0,127):tip;
-            tray.Icon=mismatch?unknownIcon:movie?movieIcon:desktop?desktopIcon:unknownIcon;
+            tray.Icon=mismatch?icons[TrayIconState.Unknown]:movie?icons[TrayIconState.Movie]:desktop?icons[TrayIconState.Desktop]:icons[TrayIconState.Unknown];
             if(ui!=null && !ui.IsDisposed) {
                 StatusView v=new StatusView();
                 v.DisplayName=settings.DisplayName;
@@ -402,7 +378,7 @@ namespace MpcMovieDisplay {
         void Shutdown() {
             closing=true;poll.Stop();click.Stop();tray.Visible=false;
             if(ui!=null)ui.Close();
-            tray.Dispose();menu.Dispose();poll.Dispose();click.Dispose();movieIcon.Dispose();desktopIcon.Dispose();unknownIcon.Dispose();
+            tray.Dispose();menu.Dispose();poll.Dispose();click.Dispose();icons.Dispose();
             ExitThread();
         }
     }
