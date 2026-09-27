@@ -12,6 +12,10 @@ namespace MpcMovieDisplay {
         public string Format, Range, Bits, Hdr, Control;
         public int Mpc;
         public bool MatchesMovie, MatchesDesktop, Automatic, Fallback;
+        // True when the last-selected preset was previously verified but the
+        // live output no longer matches it (another app/driver changed it).
+        public bool Mismatch;
+        public bool MismatchMovie;
     }
 
     // Real diagnostics state, pushed from TrayContext while the panel is open.
@@ -29,7 +33,7 @@ namespace MpcMovieDisplay {
     public class SettingsCallbacks {
         public Action Movie, Desktop, RestoreDesktop, ToggleAutomatic, ToggleStartup,
                       ToggleFallback, OpenHdr, ChooseDisplay, OpenLog, OpenReadme, TestAgain,
-                      RefreshDiagnostics;
+                      RefreshDiagnostics, Retry;
     }
 
     // The main settings window: compact grouped layout matching the approved
@@ -39,7 +43,9 @@ namespace MpcMovieDisplay {
         readonly SettingsCallbacks cb;
         ThemeButton btnDisplay, btnDiag;
         PresetCardButton cardDesktop, cardMovie;
-        Label lblOut1, lblOut2, lblMeta, lblMatches;
+        Label lblOut1, lblOut2, lblMeta, lblMatches, lblHdrNote;
+        ThemeButton btnRetry, btnReapply;
+        ThemeButton btnRestoreRef;
         RoundDot dotMatches;
         StatusPill hdrPill;
         ToggleSwitch tglAuto, tglStartup, tglFallback;
@@ -48,6 +54,8 @@ namespace MpcMovieDisplay {
         Label[] diagLabels = new Label[4];
         Label diagMovie, diagDesktop, diagLog;
         bool diagOpen;
+        bool reapplyMovie;
+        bool notFound;
         int titleH = Theme.Sc(36);
         int collapsedBottom;
 
@@ -85,14 +93,23 @@ namespace MpcMovieDisplay {
 
             // ---- Display ----
             GroupPanel gDisp = Group("Display", LM, y, W, Theme.Sc(64));
+            int retryW = Theme.Sc(90);
             btnDisplay = new ThemeButton();
             btnDisplay.Kind = 2;
             btnDisplay.Font = Theme.Font(13, false);
             btnDisplay.Location = new Point(gx, gy);
-            btnDisplay.Size = new Size(innerW, Theme.Sc(34));
+            btnDisplay.Size = new Size(innerW - retryW - Theme.Sc(8), Theme.Sc(34));
             btnDisplay.Text = "Reading display\u2026";
             btnDisplay.Click += delegate { if(cb.ChooseDisplay != null) cb.ChooseDisplay(); };
             gDisp.Controls.Add(btnDisplay);
+            btnRetry = new ThemeButton();
+            btnRetry.Kind = 0; btnRetry.Font = Theme.Font(12, true);
+            btnRetry.Text = "Retry";
+            btnRetry.Location = new Point(gx + innerW - retryW, gy);
+            btnRetry.Size = new Size(retryW, Theme.Sc(34));
+            btnRetry.Visible = false;
+            btnRetry.Click += delegate { if(cb.Retry != null) cb.Retry(); };
+            gDisp.Controls.Add(btnRetry);
             y += Theme.Sc(64) + Theme.Sc(11);
 
             // ---- Presets ----
@@ -124,7 +141,17 @@ namespace MpcMovieDisplay {
             dotMatches = new RoundDot(Theme.Green, gOut.BackColor, Theme.Sc(7));
             dotMatches.Location = new Point(gx, gy + Theme.Sc(3));
             gOut.Controls.Add(dotMatches);
-            lblMatches = Lab(gOut, "Matches Movie preset \u2713", Theme.Font(11, true), Theme.Green, gx + Theme.Sc(13), gy, leftW - gx * 2 - Theme.Sc(13), Theme.Sc(15));
+            lblMatches = Lab(gOut, "Matches Movie preset \u2713", Theme.Font(11, true), Theme.Green, gx + Theme.Sc(13), gy, leftW - gx * 2 - Theme.Sc(13) - Theme.Sc(90), Theme.Sc(15));
+            btnReapply = new ThemeButton();
+            btnReapply.Kind = 0; btnReapply.Font = Theme.Font(11, true);
+            btnReapply.Text = "Re-apply";
+            btnReapply.Location = new Point(leftW - gx - Theme.Sc(88), gy - Theme.Sc(2));
+            btnReapply.Size = new Size(Theme.Sc(88), Theme.Sc(20));
+            btnReapply.Visible = false;
+            btnReapply.Click += delegate {
+                if(reapplyMovie) { if(cb.Movie != null) cb.Movie(); } else { if(cb.Desktop != null) cb.Desktop(); }
+            };
+            gOut.Controls.Add(btnReapply);
             lblOut1 = Lab(gOut, "\u2014", Theme.Mono(15, true), Color.FromArgb(242, 246, 251), gx, gy + Theme.Sc(22), leftW - gx * 2, Theme.Sc(20));
             lblOut2 = Lab(gOut, "\u2014", Theme.Mono(15, true), Color.FromArgb(242, 246, 251), gx, gy + Theme.Sc(44), leftW - gx * 2, Theme.Sc(20));
             lblMeta = Lab(gOut, "\u2014", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(70), leftW - gx * 2, Theme.Sc(16));
@@ -134,7 +161,7 @@ namespace MpcMovieDisplay {
             hdrPill.Location = new Point(gx, gy);
             gHdr.Controls.Add(hdrPill);
             hdrPill.SetState("Off", Theme.GrayChip, Theme.TextSecondary, Color.FromArgb(36, 133, 147, 166), Color.FromArgb(90, 133, 147, 166));
-            Lab(gHdr, "10-bit is active \u2014 this does not mean HDR is on.", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(30), rightW - gx * 2, Theme.Sc(30));
+            lblHdrNote = Lab(gHdr, "10-bit is active \u2014 this does not mean HDR is on.", Theme.Font(11, false), Theme.TextSecondary, gx, gy + Theme.Sc(30), rightW - gx * 2, Theme.Sc(30));
             ThemeButton btnHdr = new ThemeButton();
             btnHdr.Kind = 0; btnHdr.Font = Theme.Font(12, true);
             btnHdr.Text = "Open Windows HDR settings";
@@ -173,6 +200,7 @@ namespace MpcMovieDisplay {
             btnRestore.Location = new Point(LM, y); btnRestore.Size = new Size(W, Theme.Sc(40));
             btnRestore.Click += delegate { if(cb.RestoreDesktop != null) cb.RestoreDesktop(); };
             Body.Controls.Add(btnRestore);
+            btnRestoreRef = btnRestore;
             y += Theme.Sc(40) + Theme.Sc(11);
 
             // ---- Advanced: fallback ----
@@ -268,37 +296,79 @@ namespace MpcMovieDisplay {
         // ---- Live updates from TrayContext ----
         public void SetStatus(StatusView v) {
             if(IsDisposed) return;
+            if(notFound) { notFound = false; btnRetry.Visible = false; }
             btnDisplay.Text = string.IsNullOrEmpty(v.DisplayName) ? "No display selected" :
                 v.DisplayName + "    \u00B7    " + v.Width + " \u00D7 " + v.Height;
+            btnDisplay.ForeColor = Theme.TextPrimary;
             lblOut1.Text = v.Width + " \u00D7 " + v.Height + "  \u00B7  " + v.Freq + " Hz";
             lblOut2.Text = v.Format + " " + v.Range + "  \u00B7  " + v.Bits + "-bit";
-            lblMeta.Text = "Control: " + v.Control + "     MPC: " + v.Mpc;
+            lblMeta.Text = "Control: " + v.Control + "     Players open: " + v.Mpc;
+            cardMovie.Enabled = true; cardDesktop.Enabled = true; btnRestoreRef.Enabled = !v.MatchesDesktop;
 
-            if(v.MatchesMovie) { lblMatches.Text = "Matches Movie preset \u2713"; lblMatches.ForeColor = Theme.Green; dotMatches.Dot = Theme.Green; }
-            else if(v.MatchesDesktop) { lblMatches.Text = "Matches Desktop preset \u2713"; lblMatches.ForeColor = Theme.Blue; dotMatches.Dot = Theme.Blue; }
-            else { lblMatches.Text = "Custom / unverified"; lblMatches.ForeColor = Theme.Amber; dotMatches.Dot = Theme.Amber; }
+            if(v.Mismatch) {
+                reapplyMovie = v.MismatchMovie;
+                string preset = v.MismatchMovie ? "Movie" : "Desktop";
+                lblMatches.Text = "Output doesn't match the " + preset + " preset";
+                lblMatches.ForeColor = Theme.AmberText; dotMatches.Dot = Theme.Amber;
+                lblMeta.Text += "     Expected " + (v.MismatchMovie ? cardMovie.SpecText : cardDesktop.SpecText);
+                btnReapply.Visible = true;
+                cardMovie.SubText = v.MismatchMovie ? "Output differs" : "Auto-set while MPC is open";
+            } else {
+                btnReapply.Visible = false;
+                cardMovie.SubText = "Auto-set while MPC is open";
+                if(v.MatchesMovie) { lblMatches.Text = "Matches Movie preset \u2713"; lblMatches.ForeColor = Theme.Green; dotMatches.Dot = Theme.Green; }
+                else if(v.MatchesDesktop) { lblMatches.Text = "Matches Desktop preset \u2713"; lblMatches.ForeColor = Theme.Blue; dotMatches.Dot = Theme.Blue; }
+                else { lblMatches.Text = "Custom / unverified"; lblMatches.ForeColor = Theme.Amber; dotMatches.Dot = Theme.Amber; }
+            }
             dotMatches.Invalidate();
 
             string hs = v.Hdr == null ? "" : v.Hdr;
-            if(hs == "On")
+            if(hs == "On") {
                 hdrPill.SetState("On", Theme.Green, Theme.Green, Color.FromArgb(30, 79, 208, 138), Color.FromArgb(90, 79, 208, 138));
-            else if(hs == "Off")
+                lblHdrNote.Text = "Turned on by Windows or your player. Reported only \u2014 this app never changes HDR.";
+            } else if(hs == "Off") {
                 hdrPill.SetState("Off", Theme.GrayChip, Theme.TextSecondary, Color.FromArgb(36, 133, 147, 166), Color.FromArgb(90, 133, 147, 166));
-            else
+                lblHdrNote.Text = v.MatchesMovie ? "10-bit is active \u2014 this does not mean HDR is on." : "Reported only \u2014 this app never changes HDR.";
+            } else {
                 hdrPill.SetState("Unknown", Theme.Amber, Theme.Amber, Color.FromArgb(30, 235, 165, 45), Color.FromArgb(90, 235, 165, 45));
+                lblHdrNote.Text = "Reported only \u2014 this app never changes HDR.";
+            }
 
             cardMovie.SetActive(v.MatchesMovie);
             cardDesktop.SetActive(v.MatchesDesktop);
             SetAutomatic(v.Automatic);
             SetFallback(v.Fallback);
         }
+        public void SetNotFound(bool on) {
+            if(IsDisposed) return;
+            notFound = on;
+            btnRetry.Visible = on;
+            if(!on) return;
+            btnDisplay.Text = "Panasonic TV not found \u00B7 Not connected";
+            btnDisplay.ForeColor = Theme.NotConnected;
+            lblOut1.Text = "No display to read"; lblOut2.Text = "\u2014";
+            lblMeta.Text = "Control: Paused";
+            lblMatches.Text = "Panasonic TV not found"; lblMatches.ForeColor = Theme.NotConnected; dotMatches.Dot = Theme.NotConnected;
+            dotMatches.Invalidate();
+            btnReapply.Visible = false;
+            hdrPill.SetState("Unknown", Theme.Amber, Theme.Amber, Color.FromArgb(30, 235, 165, 45), Color.FromArgb(90, 235, 165, 45));
+            lblHdrNote.Text = "Can't be read while the TV is disconnected.";
+            cardMovie.Enabled = false; cardDesktop.Enabled = false; btnRestoreRef.Enabled = false;
+            cardMovie.SetActive(false); cardDesktop.SetActive(false);
+        }
         public void SetAutomatic(bool on) { if(tglAuto != null) { tglAuto.Checked = on; tglAuto.Invalidate(); } }
-        public void SetFallback(bool on) { if(tglFallback != null) { tglFallback.Checked = on; tglFallback.Invalidate(); } }
+        public void SetFallback(bool on) {
+            if(tglFallback != null) { tglFallback.Checked = on; tglFallback.Invalidate(); }
+            if(cardDesktop != null) {
+                cardDesktop.SpecText = on ? "3840\u00D72160 \u00B7 60 Hz \u00B7 YCbCr 4:2:0 \u00B7 8-bit" : "3840\u00D72160 \u00B7 60 Hz \u00B7 RGB Full \u00B7 8-bit";
+                cardDesktop.Invalidate();
+            }
+        }
         public bool DiagnosticsOpen { get { return diagOpen; } }
         public void SetDiagnostics(DiagView d) {
             if(IsDisposed || diagLabels[0] == null) return;
             DiagRow(0, d.HelperRunning, "Recovery helper \u2014 " + (d.HelperRunning ? "Running" : "Not running"));
-            DiagRow(1, d.DisplayOk, "Display access \u2014 " + (d.DisplayOk ? "OK" : "Unavailable"));
+            DiagRow(1, d.DisplayOk, "Display identity \u2014 " + (d.DisplayOk ? "OK" : "Not found"));
             DiagRow(2, d.PendingOk, "Pending recovery \u2014 " + (d.Pending == null ? "?" : d.Pending));
             int tested = (d.MovieConfirmed ? 1 : 0) + (d.DesktopConfirmed ? 1 : 0);
             DiagRow(3, tested == 2, "Presets tested \u2014 " + tested + " of 2");

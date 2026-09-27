@@ -22,14 +22,20 @@ namespace MpcMovieDisplay {
         public static readonly Color TextPrimary  = Color.FromArgb(238, 242, 247);// #EEF2F7
         public static readonly Color TextBright   = Color.FromArgb(219, 226, 236);// #DBE2EC
         public static readonly Color TextSecondary= Color.FromArgb(143, 160, 179);// #8FA0B3
-        public static readonly Color TextMuted    = Color.FromArgb(109, 122, 140);// #6D7A8C
+        // Tertiary text. Replaces the old #6D7A8C, which fails 4.5:1 contrast
+        // on the dark surfaces used here.
+        public static readonly Color TextTertiary = Color.FromArgb(131, 145, 164);// #8391A4
+        public static readonly Color TextMuted    = TextTertiary;
         public static readonly Color TextLabel    = Color.FromArgb(147, 161, 179);// #93A1B3
         public static readonly Color AccentA      = Color.FromArgb(51, 184, 232); // #33B8E8
         public static readonly Color AccentB      = Color.FromArgb(233, 105, 177);// #E969B1
         public static readonly Color Green        = Color.FromArgb(79, 208, 138); // #4FD08A
+        public static readonly Color GreenSolid   = Color.FromArgb(52, 190, 115); // #34BE73
         public static readonly Color Amber        = Color.FromArgb(235, 165, 45); // #EBA52D
+        public static readonly Color AmberText    = Color.FromArgb(240, 182, 77); // #F0B64D
         public static readonly Color Blue         = Color.FromArgb(90, 166, 245); // #5AA6F5
         public static readonly Color GrayChip     = Color.FromArgb(133, 147, 166);// #8593A6
+        public static readonly Color NotConnected = Color.FromArgb(232, 138, 138);// #E88A8A
         public static readonly Color DarkInk      = Color.FromArgb(15, 19, 26);   // text over accent
         public static readonly Color TrafficRed   = Color.FromArgb(255, 95, 87);
         public static readonly Color TrafficAmber = Color.FromArgb(254, 188, 46);
@@ -65,10 +71,13 @@ namespace MpcMovieDisplay {
             p.CloseFigure();
             return p;
         }
+        // Brand gradient angle: 105 degrees, used for the active preset ring,
+        // ACTIVE pill, primary buttons and "on" switches.
+        public const float AccentAngle = 105f;
         public static LinearGradientBrush Accent(Rectangle r) {
             if(r.Width < 1) r.Width = 1;
             if(r.Height < 1) r.Height = 1;
-            return new LinearGradientBrush(r, AccentA, AccentB, 18f);
+            return new LinearGradientBrush(r, AccentA, AccentB, AccentAngle);
         }
     }
 
@@ -132,7 +141,7 @@ namespace MpcMovieDisplay {
             Rectangle r = new Rectangle(0, 0, Width - 1, Height - 1);
             using(GraphicsPath p = Theme.Round(r, Height / 2)) {
                 if(Checked) {
-                    using(LinearGradientBrush b = new LinearGradientBrush(r, onColorA, onColorB, 12f)) g.FillPath(b, p);
+                    using(LinearGradientBrush b = new LinearGradientBrush(r, onColorA, onColorB, Theme.AccentAngle)) g.FillPath(b, p);
                 } else {
                     using(SolidBrush b = new SolidBrush(Color.FromArgb(43, 55, 72))) g.FillPath(b, p);
                     using(Pen pen = new Pen(Theme.BorderStrong)) g.DrawPath(pen, p);

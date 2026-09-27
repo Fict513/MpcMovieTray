@@ -1,4 +1,4 @@
-MPC MOVIE TRAY 1.0.4
+MPC MOVIE TRAY 1.0.5
 Panasonic DX900 / NVIDIA / Windows 10 or 11 x64
 
 START HERE
@@ -45,15 +45,18 @@ and attempts restoration. Recovery can take several extra seconds.
 CONTROLS
 Left-click icon      Toggle presets and switch to Manual control.
 Right-click          Open the menu.
-Show live status     Opens the settings window: display selector, preset cards,
-                     live output, HDR indicator, toggles and diagnostics.
+Settings & live status...  Opens the settings window: display selector, preset
+                     cards, live output, HDR indicator, toggles and diagnostics.
 Automatic            Movie mode whenever MPC-HC or MPC-BE is open.
-Choose TV/monitor    Select the target display; return the old one to Desktop first.
+Choose display...    Select the target display; return the old one to Desktop first.
+Options              Use Desktop fallback (YCbCr 4:2:0) and Start with Windows.
+Tools                 Test next switch again, Open Windows HDR settings,
+                     Open activity log, Open README.
 Windows HDR settings Open Windows' HDR settings; it does not toggle HDR itself.
 Start with Windows   Optional, off by default; current-user startup only.
-Exit                 Apply/verify the Desktop preset and exit. If that preset
-                     cannot be applied, it reports the current output and offers
-                     to exit anyway rather than refusing to close.
+Exit and restore Desktop  Apply/verify the Desktop preset and exit. If that
+                     preset cannot be applied, it reports the current output
+                     and offers to exit anyway rather than refusing to close.
 
 Green M icon = verified movie preset.
 Blue D icon  = verified desktop preset.
@@ -201,7 +204,7 @@ https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ne-wingdi-displayconf
 https://github.com/microsoft/win32metadata/blob/main/generation/WinSDK/RecompiledIdlHeaders/um/wingdi.h
 
 SETTINGS WINDOW (1.0.2)
-"Show live status / controls" opens a dark settings window in the app's cyan-to-
+"Settings & live status..." opens a dark settings window in the app's cyan-to-
 pink theme. It holds the display selector, both preset cards with the ACTIVE one
 marked, the live actual output (resolution, refresh rate, colour format, range
 and bit depth), a SEPARATE Windows HDR indicator (On / Off / Unknown), an "Open
@@ -215,14 +218,14 @@ window only displays state and requests changes. All switching, verification,
 rollback and recovery behaviour is unchanged from 1.0.1.
 
 The tray menu uses the same dark theme, and the 15-second confirmation shows a
-countdown bar with Keep settings / Restore now.
+countdown bar with Keep settings / Revert now.
 
 DIAGNOSTICS
 The expandable Diagnostics panel reads live state. Nothing in it is assumed, and
 a row is green only when that thing is actually true.
 
 Recovery helper    Whether the independent helper process is running.
-Display access     Whether the saved display identity and the NVIDIA colour read
+Display identity   Whether the saved display identity and the NVIDIA colour read
                    currently succeed. Amber means the display is unreachable.
 Pending recovery   None, or an unfinished session/transition awaiting restore.
 Presets tested     How many of the two presets have passed their 15-second test
@@ -230,7 +233,7 @@ Presets tested     How many of the two presets have passed their 15-second test
                    fallback resets the relevant one, by design.
 
 The two preset lines below those rows show the exact preset strings in use and
-whether each has been confirmed. The log box shows the last four lines of the
+whether each has been confirmed. The log box shows the last six lines of the
 real activity.log. Use "Open activity log" for the full file.
 
 In --uitest mode the helper and display access deliberately report Unavailable,
@@ -241,7 +244,7 @@ Running MpcMovieTray.exe --uitest opens the settings window with fake data for
 checking layout, DPI scaling and the confirmation dialog on any machine. It makes
 no NVIDIA or display API calls, takes no single-instance lock, starts no recovery
 helper and saves nothing. Selecting a preset opens the real 15-second confirm
-dialog so the countdown and Restore button can be exercised safely; "Open Windows
+dialog so the countdown and Revert button can be exercised safely; "Open Windows
 HDR settings" cycles the HDR indicator through On / Off / Unknown. Close the
 window to exit. Build.cmd also refreshes SHA256.txt after a successful build.
 
@@ -254,6 +257,11 @@ blue D = desktop preset, amber ? = other/unknown settings. These icons do
 not assert that Windows HDR is enabled; check the separate HDR status.
 
 VERSION HISTORY
+1.0.5  Dark UI polish pass: corrected low-contrast text colour, 105-degree brand
+       gradient, restructured tray menu (Options/Tools submenus), "Players open"
+       wording, new output-mismatch banner with Re-apply, "display not found"
+       state with Retry, dynamic Windows HDR notes, and a first-run setup wizard
+       that walks through choosing the display and testing both presets.
 1.0.4  Diagnostics panel reports real state instead of placeholder text. Exit no
        longer refuses to close when the Desktop preset cannot be applied.
        Sources are ASCII-only so the legacy compiler cannot misread them under a

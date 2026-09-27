@@ -11,7 +11,7 @@ namespace MpcMovieDisplay {
         Settings settings;
         NotifyIcon tray;
         ContextMenuStrip menu;
-        ToolStripMenuItem automatic,statusLine,hdrLine,startup,desktop420;
+        ToolStripMenuItem automatic,statusLine,hdrLine,startup,desktop420,movieItem,desktopItem;
         Timer poll,click;
         Icon movieIcon,desktopIcon,unknownIcon;
         Process guard;
@@ -34,28 +34,33 @@ namespace MpcMovieDisplay {
             menu.ForeColor=Theme.TextPrimary;
             menu.Font=Theme.Font(12,false);
             menu.ShowImageMargin=true;
+            ToolStripMenuItem appName=Add("MPC Movie Tray",null); appName.Enabled=false; appName.Font=Theme.Font(12,true);
             statusLine=Add("Reading display...",null); statusLine.Enabled=false;
             hdrLine=Add("Windows HDR: checking...",null); hdrLine.Enabled=false;
             menu.Items.Add(new ToolStripSeparator());
-            Add("Movie: 4K"+settings.MovieHz+" / RGB Full / 10-bit",(s,e)=>Manual(true));
-            Add("Desktop: 4K60 / 8-bit",(s,e)=>Manual(false));
+            movieItem=Add("Movie: 4K"+settings.MovieHz+" \u00B7 RGB Full \u00B7 10-bit",(s,e)=>Manual(true));
+            desktopItem=Add(DesktopLabel(),(s,e)=>Manual(false));
             automatic=Add("Automatic while MPC is open",(s,e)=>SetAutomatic(!settings.Automatic));
             automatic.Checked=settings.Automatic;
             menu.Items.Add(new ToolStripSeparator());
-            Add("Show live status / controls",(s,e)=>ShowPanel());
-            Add("Choose TV / monitor...",(s,e)=>ChangeDisplay());
-            desktop420=Add("Desktop fallback: YCbCr 4:2:0 Limited",(s,e)=>ChangeFallback());
+            Add("Settings & live status\u2026",(s,e)=>ShowPanel());
+            Add("Choose display\u2026",(s,e)=>ChangeDisplay());
+            menu.Items.Add(new ToolStripSeparator());
+            ToolStripMenuItem options=new ToolStripMenuItem("Options"); menu.Items.Add(options);
+            desktop420=Add(options.DropDownItems,"Use Desktop fallback (YCbCr 4:2:0)",(s,e)=>ChangeFallback());
             desktop420.Checked=settings.Desktop420;
-            Add("Test next switch again (15-second rollback)",(s,e)=>{
+            startup=Add(options.DropDownItems,"Start with Windows",(s,e)=>ToggleStartup());
+            startup.Checked=StartupEnabled();
+            ToolStripMenuItem tools=new ToolStripMenuItem("Tools"); menu.Items.Add(tools);
+            Add(tools.DropDownItems,"Test next switch again (15 s rollback)",(s,e)=>{
                 settings.Confirmed.Clear();Save();Toast("Preset tests reset","The next use of each preset will ask you to keep or revert it.");
             });
-            Add("Open Windows HDR settings",(s,e)=>Open("ms-settings:display-hdr"));
-            startup=Add("Start with Windows",(s,e)=>ToggleStartup());
-            startup.Checked=StartupEnabled();
-            Add("Open README",(s,e)=>Open(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"README.txt")));
-            Add("Open activity log",(s,e)=>{Store.Log("Log opened.");Open(Store.FilePath("activity.log"));});
+            Add(tools.DropDownItems,"Open Windows HDR settings",(s,e)=>Open("ms-settings:display-hdr"));
+            tools.DropDownItems.Add(new ToolStripSeparator());
+            Add(tools.DropDownItems,"Open activity log",(s,e)=>{Store.Log("Log opened.");Open(Store.FilePath("activity.log"));});
+            Add(tools.DropDownItems,"Open README",(s,e)=>Open(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"README.txt")));
             menu.Items.Add(new ToolStripSeparator());
-            Add("Exit (restore desktop)",(s,e)=>ExitToDesktop());
+            Add("Exit and restore Desktop",(s,e)=>ExitToDesktop());
             tray=new NotifyIcon {Visible=true,Icon=unknownIcon,Text="MPC Movie Tray",ContextMenuStrip=menu};
             click=new Timer {Interval=SystemInformation.DoubleClickTime};
             click.Tick+=(s,e)=>{click.Stop();Manual(!IsMovie());};
@@ -64,10 +69,15 @@ namespace MpcMovieDisplay {
             poll=new Timer {Interval=1000};
             poll.Tick+=(s,e)=>Tick(); poll.Start();
         }
-        ToolStripMenuItem Add(string text,EventHandler action) {
+        // Desktop menu text switches to the fallback wording while it is active.
+        string DesktopLabel() {
+            return settings.Desktop420?"Desktop: 4K60 \u00B7 YCbCr 4:2:0 \u00B7 8-bit":"Desktop: 4K60 \u00B7 RGB Full \u00B7 8-bit";
+        }
+        ToolStripMenuItem Add(string text,EventHandler action) { return Add(menu.Items,text,action); }
+        ToolStripMenuItem Add(ToolStripItemCollection into,string text,EventHandler action) {
             ToolStripMenuItem item=new ToolStripMenuItem(text);
             if(action!=null)item.Click+=(s,e)=>{try{action(s,e);}catch(Exception fault){Toast("Action failed",fault.Message,true);}};
-            menu.Items.Add(item);return item;
+            into.Add(item);return item;
         }
         static Icon MakeIcon(Color colour,string letter) {
             using(Bitmap b=new Bitmap(32,32)) {
@@ -139,6 +149,19 @@ namespace MpcMovieDisplay {
                         Native.GetColor(settings.DisplayName);
                         Toast("MPC Movie Tray is ready","Click the icon to toggle. Right-click for Automatic mode, HDR status and settings.");
                     } finally {busy=false;}
+                    bool movieDone,desktopDone;
+                    try {
+                        movieDone=settings.Confirmed.Contains(Profiles.Key(settings,true));
+                        desktopDone=settings.Confirmed.Contains(Profiles.Key(settings,false));
+                    } catch { movieDone=false;desktopDone=false; }
+                    if(!movieDone || !desktopDone) {
+                        Dialogs.FirstRun(delegate { return settings.DisplayName; },
+                            delegate { Display d=Dialogs.ChooseDisplay(); if(d==null)return false; settings.DisplayName=d.Name;settings.Identity=d.Identity;movieOwned=false;lastHdr="";Save();return true; },
+                            delegate { return Request(true); },
+                            delegate { return Request(false); },
+                            delegate { try{return settings.Confirmed.Contains(Profiles.Key(settings,true));}catch{return false;} },
+                            delegate { try{return settings.Confirmed.Contains(Profiles.Key(settings,false));}catch{return false;} });
+                    }
                 }
                 if(guard==null || guard.HasExited) StartGuard();
                 UpdateStatus();
@@ -149,10 +172,12 @@ namespace MpcMovieDisplay {
                 if(action=="Movie") Request(true);
                 else if(action=="Desktop") Request(false);
             } catch(Exception e) {
-                if(lastFault!=e.Message){lastFault=e.Message;Toast("Display control paused",e.Message,true);}
+                if(lastFault!=e.Message){lastFault=e.Message;Toast("Panasonic TV not found","Presets and automatic switching are paused until it's connected again.",true);}
                 settings.Automatic=false;automatic.Checked=false;
-                statusLine.Text="Unavailable - choose/reconnect the TV";
+                movieItem.Enabled=false;desktopItem.Enabled=false;
+                statusLine.Text="Panasonic TV not found \u00B7 Not connected";
                 tray.Icon=unknownIcon;tray.Text="MPC Movie Tray: display unavailable";
+                if(ui!=null && !ui.IsDisposed) { try{ui.SetNotFound(true);}catch{} }
                 if(ui!=null && !ui.IsDisposed && ui.DiagnosticsOpen) { try{ui.SetDiagnostics(BuildDiagView(false));}catch{} }
                 try{Save();}catch{}
             }
@@ -171,7 +196,7 @@ namespace MpcMovieDisplay {
             } catch { }
             d.MovieLabel="Movie 4K"+settings.MovieHz+" RGB Full 10-bit"+(d.MovieConfirmed?" \u2713":" (untested)");
             d.DesktopLabel="Desktop 4K60 "+(settings.Desktop420?"YCbCr 4:2:0 Limited":"RGB Full")+" 8-bit"+(d.DesktopConfirmed?" \u2713":" (untested)");
-            d.LogTail=LogTail(4);
+            d.LogTail=LogTail(6);
             return d;
         }
         // Last few lines of the real activity log, without loading the whole file.
@@ -201,11 +226,22 @@ namespace MpcMovieDisplay {
             string range=c.DynamicRange==0?"Full":c.DynamicRange==1?"Limited":"Auto";
             string hdr=HdrStatus.Read(settings.DisplayName);
             bool movie=Policy.Matches(m,c,true,settings),desktop=Policy.Matches(m,c,false,settings);
+            movieItem.Enabled=true;desktopItem.Enabled=true;
+            movieItem.Checked=movie;desktopItem.Checked=desktop && !movie;
             statusLine.Text=string.Format("{0} x {1} / {2} Hz / {3} / {4}-bit",m.Width,m.Height,m.Frequency,format,bits);
             hdrLine.Text="Windows HDR: "+hdr;
-            string tip=string.Format("{0}Hz {1} {2}bit | HDR {3} | {4}",m.Frequency,format,bits,hdr,settings.Automatic?"Auto":"Manual");
-            tray.Text=tip.Length>63?tip.Substring(0,63):tip;
-            tray.Icon=movie?movieIcon:desktop?desktopIcon:unknownIcon;
+            // was this preset verified before, but the live output has since drifted from it?
+            bool mismatch=false,mismatchMovie=movieOwned;
+            try {
+                bool ownedVerified=settings.Confirmed.Contains(Profiles.Key(settings,movieOwned));
+                bool matchesOwned=movieOwned?movie:desktop;
+                mismatch=ownedVerified && !matchesOwned;
+            } catch { }
+            string modeName=movie?"Movie":desktop?"Desktop":"Unknown";
+            string shortSpec=movie?("4K"+settings.MovieHz):desktop?"4K60":(m.Frequency+"Hz");
+            string tip=modeName+" \u00B7 "+shortSpec+" "+format+" "+range+" "+bits+"-bit \u00B7 HDR "+hdr+" \u00B7 "+(settings.Automatic?"Auto":"Manual");
+            tray.Text=tip.Length>127?tip.Substring(0,127):tip;
+            tray.Icon=mismatch?unknownIcon:movie?movieIcon:desktop?desktopIcon:unknownIcon;
             if(ui!=null && !ui.IsDisposed) {
                 StatusView v=new StatusView();
                 v.DisplayName=settings.DisplayName;
@@ -215,10 +251,12 @@ namespace MpcMovieDisplay {
                 v.Mpc=Players.Count();
                 v.MatchesMovie=movie; v.MatchesDesktop=desktop;
                 v.Automatic=settings.Automatic; v.Fallback=settings.Desktop420;
+                v.Mismatch=mismatch; v.MismatchMovie=mismatchMovie;
                 ui.SetStatus(v);
             }
             if(ui!=null && !ui.IsDisposed && ui.DiagnosticsOpen) ui.SetDiagnostics(BuildDiagView(true));
-            if(movie && hdr=="Off" && lastHdr!="Off") Toast("Movie mode: Windows HDR is off","10-bit output is active. Windows HDR is off; your player may enable it when playback begins.");
+            if(movie && hdr=="Off" && lastHdr!="Off") Toast("Movie mode on \u2014 Windows HDR is off","4K"+settings.MovieHz+" \u00B7 RGB Full \u00B7 10-bit is active. Your player may turn HDR on when playback starts.");
+            if(hdr=="Off" && lastHdr!="Off") Store.Log("Windows HDR is Off (reported only, not changed).");
             if(movie && hdr.StartsWith("Unknown") && lastHdr!=hdr) Store.Log("Windows HDR could not be confirmed: "+hdr);
             lastHdr=hdr;lastFault="";
         }
@@ -256,7 +294,7 @@ namespace MpcMovieDisplay {
                 if(test) {
                     before.DeadlineUtcTicks=DateTime.UtcNow.AddSeconds(35).Ticks;
                     Store.Save("transition.json",before);
-                    keep=Dialogs.Confirm(movie?"4K"+settings.MovieHz+" - RGB Full - 10-bit":settings.Desktop420?"4K60 - YCbCr 4:2:0 - 8-bit":"4K60 - RGB Full - 8-bit");
+                    keep=Dialogs.Confirm(movie?"4K"+settings.MovieHz+" - RGB Full - 10-bit":settings.Desktop420?"4K60 - YCbCr 4:2:0 - 8-bit":"4K60 - RGB Full - 8-bit",movie?"Movie":"Desktop",movie?"Desktop":"Movie");
                 }
                 if(!keep) {
                     before.DeadlineUtcTicks=DateTime.UtcNow.AddSeconds(45).Ticks;Store.Save("transition.json",before);
@@ -287,7 +325,8 @@ namespace MpcMovieDisplay {
         }
         void ChangeFallback() {
             if(busy)return;
-            SetAutomatic(false);settings.Desktop420=!settings.Desktop420;desktop420.Checked=settings.Desktop420;Save();
+            SetAutomatic(false);settings.Desktop420=!settings.Desktop420;desktop420.Checked=settings.Desktop420;desktopItem.Text=DesktopLabel();Save();
+            if(ui!=null && !ui.IsDisposed)ui.SetFallback(settings.Desktop420);
             Toast("Desktop preset updated",settings.Desktop420?"Fallback selected: 4K60 YCbCr 4:2:0 Limited 8-bit. Select Desktop to test it.":"Preferred desktop selected: 4K60 RGB Full 8-bit. Select Desktop to test it.");
         }
         void ChangeDisplay() {
@@ -324,6 +363,7 @@ namespace MpcMovieDisplay {
             cb.ToggleFallback=delegate{ChangeFallback();if(ui!=null && !ui.IsDisposed)ui.SetFallback(settings.Desktop420);};
             cb.OpenHdr=delegate{Open("ms-settings:display-hdr");};
             cb.ChooseDisplay=delegate{ChangeDisplay();};
+            cb.Retry=delegate{try{UpdateStatus();}catch(Exception e){Toast("Still not found",e.Message,true);}};
             cb.OpenLog=delegate{Store.Log("Log opened.");Open(Store.FilePath("activity.log"));};
             cb.OpenReadme=delegate{Open(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"README.txt"));};
             cb.TestAgain=delegate{settings.Confirmed.Clear();Save();Toast("Preset tests reset","The next use of each preset will ask you to keep or revert it.");};
